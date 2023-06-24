@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"github.com/brensch/campbot/pkg/models"
+	"github.com/brensch/campbot/models"
 )
 
 type Notifier struct {

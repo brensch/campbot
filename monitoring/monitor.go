@@ -1,8 +1,8 @@
 package monitoring
 
 import (
-	"github.com/brensch/campbot/pkg/models"
-	"github.com/brensch/campbot/pkg/providers"
+	"github.com/brensch/campbot/models"
+	"github.com/brensch/campbot/providers"
 )
 
 type Monitor struct {

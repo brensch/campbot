@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"github.com/brensch/campbot/pkg/models"
+	"github.com/brensch/campbot/models"
 )
 
 // Provider interface that all campsite providers must implement
