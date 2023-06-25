@@ -17,7 +17,7 @@ func TestSchniffCollection(t *testing.T) {
 	}
 	defer os.Remove(tempFile.Name())
 
-	expectedSchniff := Schniff{
+	expectedSchniff := &Schniff{
 		CampgroundID: "camp1",
 		CampsiteIDs:  []string{"site1", "site2"},
 		StartDate:    time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),

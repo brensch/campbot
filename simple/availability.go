@@ -121,6 +121,9 @@ func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client
 
 	// Iterate over schniffs to extract the months the schniff ranges over for each campgroundID
 	for _, schniff := range sc.schniffs {
+		if !schniff.Active {
+			continue
+		}
 		// Generate all months between StartDate and EndDate
 		start, end := schniff.StartDate, schniff.EndDate
 		for d := start; d.Before(end) || d.Equal(end); d = d.AddDate(0, 1, 0) {
@@ -169,26 +172,15 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 	defer sc.mutex.Unlock()
 
 	for _, schniff := range sc.schniffs {
-		notification := Notification{Schniff: schniff}
+		notification := Notification{SchniffID: schniff.SchniffID}
 		// Find the availability for this schniff
 		for _, availability := range availabilities {
 			// Check if the schniff campgroundID matches the availability campgroundID
-			fmt.Println(schniff.CampgroundID, availability.CampgroundID)
 			if schniff.CampgroundID != availability.CampgroundID {
 				continue
 			}
 
 			for campsiteID, campsite := range availability.Availability.Campsites {
-				// campsite.
-
-				// Check if the schniff campsiteID is in the availability
-				// for _, campsiteID := range schniff.CampsiteIDs {
-				// Check if the schniff campsiteID is in the availability
-				// _, ok := availability.Availability.Campsites[campsiteID]
-				// if len(schniff.CampsiteIDs) > 0 && !ok {
-				// 	continue
-				// }
-
 				for date, state := range campsite.Availabilities {
 					if state != "Available" {
 						continue
@@ -201,8 +193,8 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 						olog.Error("Unable to parse date", zap.Error(err))
 						continue
 					}
-					// Check if the date is in the schniff range
-					if !schniff.StartDate.Before(date) && !schniff.EndDate.After(date) {
+					// Check if the date is in the schniff range, start and end date inclusive
+					if !(date.After(schniff.StartDate) || date.Equal(schniff.StartDate)) || !(date.Before(schniff.EndDate) || date.Equal(schniff.EndDate)) {
 						continue
 					}
 

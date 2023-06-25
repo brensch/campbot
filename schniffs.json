@@ -1,1 +1,13 @@
-[{"campground_id":"231958","campground_name":"campground","campsite_ids":null,"start_date":"2023-07-20T00:00:00Z","end_date":"2023-07-23T00:00:00Z","user_id":"175165341440147456","user_nick":"brensch"},{"campground_id":"231958","campground_name":"campground","campsite_ids":null,"start_date":"2023-08-20T00:00:00Z","end_date":"2023-08-23T00:00:00Z","user_id":"175165341440147456","user_nick":"brensch"}]
+[
+  {
+    "schniff_id": "0032c58b-0cf7-4e4b-853b-c259b4f0d349",
+    "active": false,
+    "campground_id": "231958",
+    "campground_name": "campground",
+    "campsite_ids": null,
+    "start_date": "2023-08-10T00:00:00Z",
+    "end_date": "2023-08-15T00:00:00Z",
+    "user_id": "175165341440147456",
+    "user_nick": "brensch"
+  }
+]

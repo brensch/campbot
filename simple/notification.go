@@ -10,7 +10,7 @@ import (
 
 type Notification struct {
 	AvailableCampsites []CampsiteAvailability
-	Schniff            Schniff
+	SchniffID          string
 }
 
 type CampsiteAvailability struct {
@@ -23,23 +23,28 @@ type campsiteWithDays struct {
 	daysCount  int
 }
 
-func GenerateDiscordMessage(notification Notification) string {
+func GenerateDiscordMessage(sc *SchniffCollection, notification Notification) (string, error) {
 	var message string
 	baseURL := "https://www.recreation.gov/camping/campsites/"
 
+	schniff, err := sc.GetSchniff(notification.SchniffID)
+	if err != nil {
+		return "", err
+	}
+
 	// Create an opening sentence with more details about the campground and the date range
 	message = fmt.Sprintf("Hello %s, here is the availability of campsites for campground %s (ID: %s) from %s to %s:\n",
-		notification.Schniff.UserNick,
-		notification.Schniff.CampgroundName,
-		notification.Schniff.CampgroundID,
-		notification.Schniff.StartDate.Format("2006-01-02"),
-		notification.Schniff.EndDate.Format("2006-01-02"),
+		schniff.UserNick,
+		schniff.CampgroundName,
+		schniff.CampgroundID,
+		schniff.StartDate.Format("2006-01-02"),
+		schniff.EndDate.Format("2006-01-02"),
 	)
 
 	message += "```\nCampsite  Coverage  Link\n"
 
 	// Calculate total number of days in the date range
-	totalDays := int(notification.Schniff.EndDate.Sub(notification.Schniff.StartDate).Hours() / 24)
+	totalDays := int(schniff.EndDate.Sub(schniff.StartDate).Hours() / 24)
 
 	// Create a map to hold campsite IDs and counts
 	campsiteDayCount := make(map[string]int)
@@ -79,23 +84,27 @@ func GenerateDiscordMessage(notification Notification) string {
 	}
 
 	message += "```"
-	return message
+	return message, nil
 }
 
-func GenerateDiscordMessageEmbed(notification Notification) *discordgo.MessageEmbed {
+func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notification) (*discordgo.MessageEmbed, error) {
 	baseURL := "https://www.recreation.gov/camping/campsites/"
+	schniff, err := sc.GetSchniff(notification.SchniffID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create an opening sentence with more details about the campground and the date range
-	title := fmt.Sprintf("Availability of campsites for %s (ID: %s) from %s to %s",
-		notification.Schniff.CampgroundName,
-		notification.Schniff.CampgroundID,
-		notification.Schniff.StartDate.Format("2006-01-02"),
-		notification.Schniff.EndDate.Format("2006-01-02"),
+	title := fmt.Sprintf("Successfully schniffed! %s from %s to %s",
+		schniff.CampgroundName,
+		schniff.StartDate.Format("2006-01-02"),
+		schniff.EndDate.Format("2006-01-02"),
 	)
 
 	// Calculate total number of days in the date range
-	totalDays := int(notification.Schniff.EndDate.Sub(notification.Schniff.StartDate).Hours() / 24)
-
+	totalDays := int(schniff.EndDate.Sub(schniff.StartDate).Hours()/24) + 1
+	// fmt.Println(len(notification.AvailableCampsites))
+	// fmt.Println(totalDays, schniff.EndDate, schniff.StartDate)
 	// Create a map to hold campsite IDs and counts
 	campsiteDayCount := make(map[string]int)
 
@@ -116,7 +125,9 @@ func GenerateDiscordMessageEmbed(notification Notification) *discordgo.MessageEm
 	})
 
 	// Take top 10 campsites
+	remainingSites := 0
 	if len(campsites) > 10 {
+		remainingSites = len(campsites) - 10
 		campsites = campsites[:10]
 	}
 
@@ -129,18 +140,26 @@ func GenerateDiscordMessageEmbed(notification Notification) *discordgo.MessageEm
 		availabilityPercentage := float64(campsite.daysCount) / float64(totalDays) * 100
 		fields[i] = &discordgo.MessageEmbedField{
 			Name:   campsite.campsiteID,
-			Value:  fmt.Sprintf("Available for %.2f%% of the requested period. [Link](%s)", availabilityPercentage, campsiteLink),
+			Value:  fmt.Sprintf("[Covers %.0f%%](%s)", availabilityPercentage, campsiteLink),
 			Inline: false,
 		}
 	}
 
+	message := fmt.Sprintf(`Yo %s, we found some availabilities open up for the time you're schniffing.
+	Showing the top %d most available campsites. 
+	Found %d in total`,
+		schniff.UserNick,
+		len(campsites),
+		len(campsites)+remainingSites,
+	)
+
 	// Create the embed message
 	embed := &discordgo.MessageEmbed{
 		Title:       title,
-		Description: fmt.Sprintf("Hello %s, here is the availability of campsites:", notification.Schniff.UserNick),
+		Description: message,
 		Fields:      fields,
 		Color:       0x00ff00, // Change this to any color you want
 	}
 
-	return embed
+	return embed, nil
 }

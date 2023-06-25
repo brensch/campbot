@@ -21,5 +21,7 @@ func TestGenerateNotificationMessage(t *testing.T) {
 		return
 	}
 
-	fmt.Print(GenerateDiscordMessage(notification))
+	sc := NewSchniffCollection("schniffs.json")
+
+	fmt.Print(GenerateDiscordMessage(sc, notification))
 }

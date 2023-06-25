@@ -10,6 +10,9 @@ import (
 )
 
 type Schniff struct {
+	SchniffID string `json:"schniff_id"`
+	Active    bool   `json:"active"`
+
 	CampgroundID   string    `json:"campground_id"`
 	CampgroundName string    `json:"campground_name"`
 	CampsiteIDs    []string  `json:"campsite_ids"`
@@ -20,14 +23,14 @@ type Schniff struct {
 }
 
 type SchniffCollection struct {
-	schniffs     []Schniff
+	schniffs     []*Schniff
 	fileLocation string
 	mutex        sync.Mutex
 }
 
 func NewSchniffCollection(fileLocation string) *SchniffCollection {
 	sc := &SchniffCollection{
-		schniffs:     make([]Schniff, 0),
+		schniffs:     make([]*Schniff, 0),
 		mutex:        sync.Mutex{},
 		fileLocation: fileLocation,
 	}
@@ -37,7 +40,7 @@ func NewSchniffCollection(fileLocation string) *SchniffCollection {
 	return sc
 }
 
-func (sc *SchniffCollection) Add(s Schniff) error {
+func (sc *SchniffCollection) Add(s *Schniff) error {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 
@@ -46,11 +49,41 @@ func (sc *SchniffCollection) Add(s Schniff) error {
 	return sc.save()
 }
 
-func (sc *SchniffCollection) GetSchniffsForUser(userID string) []Schniff {
+func (sc *SchniffCollection) SetActive(id string, active bool) error {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 
-	var schniffsForUser []Schniff
+	for _, schniff := range sc.schniffs {
+		if schniff.SchniffID != id {
+			continue
+		}
+		fmt.Println("Found schniff", schniff.SchniffID, "setting active to", active)
+		schniff.Active = active
+		return sc.save()
+	}
+
+	return fmt.Errorf("id not found")
+}
+
+func (sc *SchniffCollection) GetSchniff(id string) (*Schniff, error) {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+
+	for _, schniff := range sc.schniffs {
+		if schniff.SchniffID != id {
+			continue
+		}
+		return schniff, nil
+	}
+
+	return nil, fmt.Errorf("id not found")
+}
+
+func (sc *SchniffCollection) GetSchniffsForUser(userID string) []*Schniff {
+	sc.mutex.Lock()
+	defer sc.mutex.Unlock()
+
+	var schniffsForUser []*Schniff
 	for _, schniff := range sc.schniffs {
 		if schniff.UserID == userID {
 
@@ -78,15 +111,17 @@ func (sc *SchniffCollection) load() error {
 
 func (sc *SchniffCollection) save() error {
 
-	data, err := json.Marshal(sc.schniffs)
+	data, err := json.MarshalIndent(sc.schniffs, "", "  ")
 	if err != nil {
 		return err
 	}
 
+	fmt.Println(string(data))
+
 	return ioutil.WriteFile(sc.fileLocation, data, 0644)
 }
 
-func GenerateTableMessage(schniffs []Schniff) string {
+func GenerateTableMessage(schniffs []*Schniff) string {
 	var builder strings.Builder
 
 	// Table headers

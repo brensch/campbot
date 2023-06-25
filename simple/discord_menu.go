@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 )
 
 const (
@@ -102,13 +103,15 @@ var (
 					return
 				}
 
-				schniff := Schniff{
+				schniff := &Schniff{
 					CampgroundID:   data.Options[0].StringValue(),
 					CampgroundName: data.Options[0].Name,
 					StartDate:      startDate,
 					EndDate:        endDate,
 					UserID:         i.Member.User.ID,
 					UserNick:       i.Member.User.Username,
+					SchniffID:      uuid.New().String(),
+					Active:         true,
 				}
 
 				err = sc.Add(schniff)

@@ -8,66 +8,11 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
-
-// func main() {
-// 	log := zap.NewExample()
-// 	client := &http.Client{
-// 		Transport: &http.Transport{
-// 			Dial: (&net.Dialer{
-// 				Timeout:   60 * time.Second,
-// 				KeepAlive: 60 * time.Second,
-// 			}).Dial,
-// 			TLSHandshakeTimeout:   30 * time.Second,
-// 			ResponseHeaderTimeout: 30 * time.Second,
-// 			ExpectContinueTimeout: 10 * time.Second,
-// 		},
-// 	}
-
-// 	availability, err := GetAvailability(context.Background(), log, client, "10083840", time.Now())
-// 	if err != nil {
-// 		log.Error("couldn't get availability", zap.Error(err))
-// 		return
-// 	}
-
-// 	TOKEN := os.Getenv("DISCORD_TOKEN")
-
-// 	dg, _ := discordgo.New("Bot " + TOKEN)
-
-// 	dg.AddHandler(messageCreate)
-
-// 	dg.Open()
-// 	<-make(chan struct{})
-
-// 	log.Info("got availability", zap.Any("availability", availability))
-// }
-
-// func main() {
-// 	token := os.Getenv("DISCORD_TOKEN")
-
-// 	discord, err := discordgo.New("Bot " + token)
-// 	if err != nil {
-// 		fmt.Println("Error creating Discord session: ", err)
-// 		return
-// 	}
-
-// 	http.HandleFunc("/", InteractionHandler(discord))
-
-// 	port := os.Getenv("PORT")
-// 	if port == "" {
-// 		port = "3000" // Default to port 3000 if no PORT variable is set
-// 	}
-
-// 	fmt.Println("Server is running on Port:", port)
-// 	err = http.ListenAndServe(":"+port, nil)
-// 	if err != nil {
-// 		fmt.Println("Error starting server: ", err)
-// 		return
-// 	}
-// }
 
 // Bot parameters
 var (
@@ -105,60 +50,22 @@ func main() {
 	defer s.Close()
 
 	createdCommands, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, *GuildID, commands)
-
 	if err != nil {
 		log.Fatalf("Cannot register commands: %v", err)
 	}
 
-	log.Println(createdCommands)
-
-	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc)
-	fmt.Println(requests)
-
-	availabilities, err := DoRequests(ctx, olog, s.Client, requests)
-	if err != nil {
-		olog.Error("Unable to get availability", zap.Error(err))
-	}
-
-	// for _, availability := range availabilities {
-	// 	json, _ := json.Marshal(availability)
-	// 	fmt.Println(string(json))
-	// }
-
-	notifications, err := GenerateNotifications(ctx, olog, availabilities, sc)
-	if err != nil {
-		olog.Error("Unable to generate notifications", zap.Error(err))
-	}
-
-	guilds, err := s.UserGuilds(100, "", "")
-	if err != nil {
-		log.Fatalf("Cannot get guilds: %v", err)
-	}
-
-	for _, guild := range guilds {
-		// Get channels of each guild
-		fmt.Println(guild.ID)
-		channels, err := s.GuildChannels(guild.ID)
-		if err != nil {
-			fmt.Println("Error getting channels: ", err)
-			return
-		}
-
-		for _, channel := range channels {
-			if channel.Type == discordgo.ChannelTypeGuildText {
-				fmt.Println("Channel ID: ", channel.ID, channel.Name)
-				for _, notification := range notifications {
-					_, err = s.ChannelMessageSend(channel.ID, GenerateDiscordMessage(notification))
-					if err != nil {
-						olog.Error("Unable to send message", zap.Error(err))
-					}
-					s.ChannelMessageSendEmbeds(channel.ID, []*discordgo.MessageEmbed{GenerateDiscordMessageEmbed(notification)})
-
-				}
-
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		for {
+			loop(ctx, olog, s, sc)
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				olog.Info("Context done")
+				return
 			}
 		}
-	}
+	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
@@ -174,9 +81,50 @@ func main() {
 
 }
 
-func DoNotification(ctx context.Context, olog *zap.Logger, userID string) error {
-	olog.Info("got thing", zap.String("userID", userID))
-	return nil
+func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection) {
+	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc)
+
+	availabilities, err := DoRequests(ctx, olog, s.Client, requests)
+	if err != nil {
+		olog.Error("Unable to get availability", zap.Error(err))
+	}
+
+	notifications, err := GenerateNotifications(ctx, olog, availabilities, sc)
+	if err != nil {
+		olog.Error("Unable to generate notifications", zap.Error(err))
+	}
+
+	for _, notification := range notifications {
+		schniff, err := sc.GetSchniff(notification.SchniffID)
+		if err != nil {
+			olog.Error("no such schniff", zap.Error(err))
+			continue
+		}
+		dmChannel, err := s.UserChannelCreate(schniff.UserID)
+		if err != nil {
+			olog.Error("Unable to create dmChannel", zap.Error(err))
+			continue
+		}
+		embeddedContents, err := GenerateDiscordMessageEmbed(sc, notification)
+		if err != nil {
+			olog.Error("Unable to generate embedded message", zap.Error(err))
+			continue
+		}
+		_, err = s.ChannelMessageSendEmbeds(dmChannel.ID, []*discordgo.MessageEmbed{embeddedContents})
+		if err != nil {
+			olog.Error("Unable to send embeds", zap.Error(err))
+			continue
+		}
+
+		// Mark the schniff as inactive
+		fmt.Println(schniff.SchniffID)
+		err = sc.SetActive(schniff.SchniffID, false)
+		if err != nil {
+			olog.Error("Unable to mark as inactive", zap.Error(err))
+			continue
+		}
+
+	}
 }
 
 var (
