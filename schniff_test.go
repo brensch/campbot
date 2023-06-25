@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -11,7 +10,7 @@ import (
 
 func TestSchniffCollection(t *testing.T) {
 	// Arrange
-	tempFile, err := ioutil.TempFile("", "schniffs")
+	tempFile, err := os.CreateTemp("", "schniffs")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}

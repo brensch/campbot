@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -96,7 +96,7 @@ func (sc *SchniffCollection) GetSchniffsForUser(userID string) []*Schniff {
 
 func (sc *SchniffCollection) load() error {
 
-	data, err := ioutil.ReadFile(sc.fileLocation)
+	data, err := os.ReadFile(sc.fileLocation)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (sc *SchniffCollection) save() error {
 		return err
 	}
 
-	return ioutil.WriteFile(sc.fileLocation, data, 0644)
+	return os.WriteFile(sc.fileLocation, data, 0644)
 }
 
 func GenerateTableMessage(schniffs []*Schniff) string {

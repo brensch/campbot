@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"go.uber.org/zap"
@@ -18,7 +18,7 @@ func TestGenerateNotifications(t *testing.T) {
 	sc := NewSchniffCollection("schniffs.json")
 
 	// Read and unmarshal the availabilities.json file
-	availabilitiesFile, err := ioutil.ReadFile("availability.json")
+	availabilitiesFile, err := os.ReadFile("availability.json")
 	if err != nil {
 		t.Fatalf("Error reading availabilities.json file: %v", err)
 	}

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
+
+	"github.com/brensch/campbot/stealthing"
 
 	"go.uber.org/zap"
 )
@@ -63,7 +65,7 @@ func GetAvailability(ctx context.Context, olog *zap.Logger, client *http.Client,
 		return AvailabilityWithID{}, err
 	}
 
-	req.Header.Set("User-Agent", RandomUserAgent())
+	req.Header.Set("User-Agent", stealthing.RandomUserAgent())
 
 	// round the time to the start of the target month and put in param "start_date"
 	monthStart := GetStartOfMonth(targetTime)
@@ -80,7 +82,7 @@ func GetAvailability(ctx context.Context, olog *zap.Logger, client *http.Client,
 	}
 	defer res.Body.Close()
 
-	resContents, err := ioutil.ReadAll(res.Body)
+	resContents, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Error("couldn't read response", zap.Error(err))
 		return AvailabilityWithID{}, err
