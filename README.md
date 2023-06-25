@@ -21,3 +21,4 @@ campsite-watcher/
 └── database/                    // (Optional, if needed) Service for interacting with the database
     └── db.go                    // Methods for interacting with the database
 ```
+
