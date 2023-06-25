@@ -116,8 +116,6 @@ func (sc *SchniffCollection) save() error {
 		return err
 	}
 
-	fmt.Println(string(data))
-
 	return ioutil.WriteFile(sc.fileLocation, data, 0644)
 }
 
@@ -126,11 +124,11 @@ func GenerateTableMessage(schniffs []*Schniff) string {
 
 	// Table headers
 	builder.WriteString("```\n")
-	builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s\n", "CampgroundID", "CampsiteIDs", "StartDate", "EndDate", "UserNick"))
+	builder.WriteString(fmt.Sprintf("%-40s %-15s %-15s %-15s %-15s %-15s %-15s\n", "ID", "CampgroundID", "CampgroundName", "StartDate", "EndDate", "UserNick", "CampsiteIDs"))
 
 	// Table rows
 	for _, schniff := range schniffs {
-		builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s\n", schniff.CampgroundID, strings.Join(schniff.CampsiteIDs, ","), schniff.StartDate.Format("2006-01-02"), schniff.EndDate.Format("2006-01-02"), schniff.UserNick))
+		builder.WriteString(fmt.Sprintf("%-40s %-15s %-15s %-15s %-15s %-15s %-15s\n", schniff.SchniffID, schniff.CampgroundID, schniff.CampgroundName, schniff.StartDate.Format("2006-01-02"), schniff.EndDate.Format("2006-01-02"), schniff.UserNick, strings.Join(schniff.CampsiteIDs, ",")))
 	}
 
 	builder.WriteString("```")

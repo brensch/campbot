@@ -129,7 +129,6 @@ var (
 					panic(err)
 				}
 			case discordgo.InteractionApplicationCommandAutocomplete:
-				fmt.Println("got request for autocomplete")
 				data := i.ApplicationCommandData()
 				var choices []*discordgo.ApplicationCommandOptionChoice
 				switch {
