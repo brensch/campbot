@@ -28,7 +28,7 @@ func (n *Notifier) SendNotifications(notifications []models.ChangeNotification) 
 		// this needs to be changed to be email i assume
 		user := notification.UserID
 		availability := notification.NewStatus
-		msg := fmt.Sprintf("Subject: Campsite Availability Changed\n\nThe availability of campsite %s has changed. It is now: %t.", availability.Site.SiteID, availability.Reserved)
+		msg := fmt.Sprintf("Subject: Campsite Availability Changed\n\nThe availability of campsite %s has changed. It is now: %t.", availability.SiteID, availability.Reserved)
 
 		err := smtp.SendMail(
 			n.smtpHost+":"+n.smtpPort,
