@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	SchniffDir = "schniffs"
 )
 
 type Schniff struct {
@@ -25,15 +30,31 @@ type Schniff struct {
 
 type SchniffCollection struct {
 	schniffs     []*Schniff
-	fileLocation string
 	mutex        sync.Mutex
+	fileLocation string
 }
 
 func NewSchniffCollection(fileLocation string) *SchniffCollection {
+
+	location := filepath.Join(SchniffDir, fileLocation)
 	sc := &SchniffCollection{
 		schniffs:     make([]*Schniff, 0),
 		mutex:        sync.Mutex{},
-		fileLocation: fileLocation,
+		fileLocation: location,
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(location); os.IsNotExist(err) {
+		// Create the file if it does not exist
+		err := os.Mkdir(SchniffDir, 0755)
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = os.Create(location)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	sc.load()

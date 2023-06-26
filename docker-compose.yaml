@@ -6,3 +6,5 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./schniffs.json:/app/schniffs.json
+    env_file:
+      - .env
