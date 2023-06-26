@@ -34,33 +34,39 @@ func init() {
 
 func main() {
 	ctx := context.Background()
-	olog := zap.NewExample()
+	log := zap.NewExample()
+
+	cc, err := NewCampgroundCollection(ctx, log, s.Client)
+	if err != nil {
+		log.Fatal("Cannot get campground collection", zap.Error(err))
+	}
+
 	sc := NewSchniffCollection("schniffs.json")
-	s.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) { log.Println("Bot is up!") })
+	s.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) { log.Info("ready to schniff") })
 	s.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
-			h(s, i, sc)
+			h(log, s, i, sc, cc)
 		}
 	})
-	err := s.Open()
+	err = s.Open()
 	if err != nil {
-		log.Fatalf("Cannot open the session: %v", err)
+		log.Fatal("Cannot open the session", zap.Error(err))
 	}
 	defer s.Close()
 
 	createdCommands, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, *GuildID, commands)
 	if err != nil {
-		log.Fatalf("Cannot register commands: %v", err)
+		log.Fatal("Cannot register commands", zap.Error(err))
 	}
 
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		for {
-			loop(ctx, olog, s, sc)
+			loop(ctx, log, s, sc)
 			select {
 			case <-ticker.C:
 			case <-ctx.Done():
-				olog.Info("Context done")
+				log.Info("Context done")
 				return
 			}
 		}
@@ -69,12 +75,12 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	<-stop
-	log.Println("Gracefully shutting down")
+	log.Info("Gracefully shutting down")
 
 	for _, cmd := range createdCommands {
 		err := s.ApplicationCommandDelete(s.State.User.ID, *GuildID, cmd.ID)
 		if err != nil {
-			log.Fatalf("Cannot delete %q command: %v", cmd.Name, err)
+			log.Error("Cannot delete command: %v", zap.String("command", cmd.Name), zap.Error(err))
 		}
 	}
 

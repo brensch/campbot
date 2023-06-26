@@ -1,16 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/bwmarrin/discordgo"
-	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 const (
-	CommandNewSchniff  = "new-schniff"
-	CommandViewSchniff = "view-schniff"
+	CommandNewSchniff     = "new-schniff"
+	CommandViewSchniffs   = "view-schniffs"
+	CommandRestartSchniff = "restart-schniff"
 )
 
 var (
@@ -51,110 +49,48 @@ var (
 			},
 		},
 		{
-			Name:        CommandViewSchniff,
+			Name:        CommandViewSchniffs,
 			Description: "See all schniffs belonging to you.",
 			Type:        discordgo.ChatApplicationCommand,
 		},
+		{
+			Name:        CommandRestartSchniff,
+			Description: "Start a schniff running again if you missed it",
+			Type:        discordgo.ChatApplicationCommand,
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:         "schniff-id",
+					Description:  "Schniff",
+					Type:         discordgo.ApplicationCommandOptionString,
+					Required:     true,
+					Autocomplete: true,
+				},
+			},
+		},
 	}
 
-	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection){
-		CommandViewSchniff: func(s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
+	commandHandlers = map[string]func(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection){
+		CommandViewSchniffs: func(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection) {
 			switch i.Type {
 			case discordgo.InteractionApplicationCommand:
+				HandleViewSchniffs(log, s, i, sc)
 
-				// get all this user's schniffs
-				schniffs := sc.GetSchniffsForUser(i.Member.User.ID)
-				table := GenerateTableMessage(schniffs)
-
-				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: table,
-					},
-				})
-				if err != nil {
-					panic(err)
-				}
 			}
 		},
-		CommandNewSchniff: func(s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
+		CommandNewSchniff: func(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection) {
 			switch i.Type {
 			case discordgo.InteractionApplicationCommand:
-				data := i.ApplicationCommandData()
-				startDate, err := time.Parse("2006-01-02", data.Options[1].StringValue())
-				if err != nil {
-					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionResponseData{
-							Content: fmt.Sprintf("Invalid start date: %v", err),
-						},
-					})
-					return
-				}
-
-				endDate, err := time.Parse("2006-01-02", data.Options[2].StringValue())
-				if err != nil {
-					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionResponseData{
-							Content: fmt.Sprintf("Invalid end date: %v", err),
-						},
-					})
-					return
-				}
-
-				schniff := &Schniff{
-					CampgroundID:   data.Options[0].StringValue(),
-					CampgroundName: data.Options[0].Name,
-					StartDate:      startDate,
-					EndDate:        endDate,
-					UserID:         i.Member.User.ID,
-					UserNick:       i.Member.User.Username,
-					SchniffID:      uuid.New().String(),
-					Active:         true,
-				}
-
-				err = sc.Add(schniff)
-				if err != nil {
-					panic(err)
-				}
-
-				err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionResponseData{
-						Content: fmt.Sprintf("Selected: %+v", schniff),
-					},
-				})
-				if err != nil {
-					panic(err)
-				}
+				HandleNewSchniff(log, s, i, sc, cc)
 			case discordgo.InteractionApplicationCommandAutocomplete:
-				data := i.ApplicationCommandData()
-				var choices []*discordgo.ApplicationCommandOptionChoice
-				switch {
-				// In this case there are multiple autocomplete options. The Focused field shows which option user is focused on.
-				case data.Options[0].Focused:
-					choices = []*discordgo.ApplicationCommandOptionChoice{
-						{
-							Name:  "Yosemite",
-							Value: "10083840",
-						},
-						{
-							Name:  "Arroyo",
-							Value: "231958",
-						},
-					}
-				}
-
-				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionApplicationCommandAutocompleteResult,
-					Data: &discordgo.InteractionResponseData{
-						Choices: choices,
-					},
-				})
-				if err != nil {
-					panic(err)
-				}
+				HandleNewSchniffAutocomplete(log, s, i, sc, cc)
+			}
+		},
+		CommandRestartSchniff: func(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection) {
+			switch i.Type {
+			case discordgo.InteractionApplicationCommand:
+				HandleRestartSchniff(log, s, i, sc)
+			case discordgo.InteractionApplicationCommandAutocomplete:
+				HandleRestartSchniffAutocomplete(log, s, i, sc)
 			}
 		},
 	}

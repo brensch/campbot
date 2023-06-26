@@ -10,8 +10,9 @@ import (
 )
 
 type Schniff struct {
-	SchniffID string `json:"schniff_id"`
-	Active    bool   `json:"active"`
+	SchniffID    string    `json:"schniff_id"`
+	Active       bool      `json:"active"`
+	CreationTime time.Time `json:"creation_time"`
 
 	CampgroundID   string    `json:"campground_id"`
 	CampgroundName string    `json:"campground_name"`
@@ -124,11 +125,11 @@ func GenerateTableMessage(schniffs []*Schniff) string {
 
 	// Table headers
 	builder.WriteString("```\n")
-	builder.WriteString(fmt.Sprintf("%-40s %-15s %-15s %-15s %-15s %-15s %-15s\n", "ID", "CampgroundID", "CampgroundName", "StartDate", "EndDate", "UserNick", "CampsiteIDs"))
+	builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "CampgroundID", "CampgroundName", "StartDate", "EndDate", "UserNick", "CampsiteIDs", "active"))
 
 	// Table rows
 	for _, schniff := range schniffs {
-		builder.WriteString(fmt.Sprintf("%-40s %-15s %-15s %-15s %-15s %-15s %-15s\n", schniff.SchniffID, schniff.CampgroundID, schniff.CampgroundName, schniff.StartDate.Format("2006-01-02"), schniff.EndDate.Format("2006-01-02"), schniff.UserNick, strings.Join(schniff.CampsiteIDs, ",")))
+		builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s %-15s %-15t\n", schniff.CampgroundID, schniff.CampgroundName, schniff.StartDate.Format("2006-01-02"), schniff.EndDate.Format("2006-01-02"), schniff.UserNick, strings.Join(schniff.CampsiteIDs, ","), schniff.Active))
 	}
 
 	builder.WriteString("```")

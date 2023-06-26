@@ -6,7 +6,9 @@ require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
+	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	go.uber.org/zap v1.24.0
+	golang.org/x/text v0.3.3
 )
 
 require (
