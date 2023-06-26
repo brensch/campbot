@@ -149,6 +149,21 @@ func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client
 	return availabilityRequests
 }
 
+func DeduplicateAvailabilityRequests(requests []AvailabilityRequest) []AvailabilityRequest {
+	seen := make(map[string]struct{})
+	var deduplicated []AvailabilityRequest
+
+	for _, request := range requests {
+		key := request.CampgroundID + request.TargetTime.String()
+		if _, ok := seen[key]; !ok {
+			seen[key] = struct{}{}
+			deduplicated = append(deduplicated, request)
+		}
+	}
+
+	return deduplicated
+}
+
 // CheckAvailability does a list of requests and returns a list of availabilities
 func DoRequests(ctx context.Context, olog *zap.Logger, client *http.Client, requests []AvailabilityRequest) ([]AvailabilityWithID, error) {
 	var availabilities []AvailabilityWithID
@@ -174,6 +189,9 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 	defer sc.mutex.Unlock()
 
 	for _, schniff := range sc.schniffs {
+		if !schniff.Active {
+			continue
+		}
 		notification := Notification{SchniffID: schniff.SchniffID}
 		// Find the availability for this schniff
 		for _, availability := range availabilities {
@@ -187,8 +205,6 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 					if state != "Available" {
 						continue
 					}
-
-					// fmt.Println("Found availability", date, state, campsiteID, schniff.CampgroundID, schniff.UserID)
 
 					date, err := time.Parse(time.RFC3339, date)
 					if err != nil {

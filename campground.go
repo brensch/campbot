@@ -178,10 +178,6 @@ func GetCampgrounds(ctx context.Context, log *zap.Logger, client *http.Client) (
 	return campgrounds, nil
 }
 
-func (c SummarisedCampground) String() string {
-	return fmt.Sprintf("%s - ", c.Name, c.ID)
-}
-
 func NewCampgroundCollection(ctx context.Context, log *zap.Logger, s *discordgo.Session, client *http.Client) (*CampgroundCollection, error) {
 	// get campgrounds if campgrounds.json doesn't exist
 	cc := &CampgroundCollection{

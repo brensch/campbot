@@ -145,10 +145,13 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 		}
 	}
 
-	message := fmt.Sprintf(`Yo %s, we found some availabilities open up for the time you're schniffing.
+	message := fmt.Sprintf(`Yo <@%s>, we found some availabilities open up for the time you're schniffing.
 	Showing the top %d most available campsites. 
-	Found %d in total`,
-		schniff.UserNick,
+	Found %d in total.
+	
+	IMPORTANT: You must act fast to get one of these sites. Click the link and complete the form in the website.
+	We have stopped monitoring the site. If you miss out on one of the availabilities below, please restart this schniff by typing '/restart-schniff'`,
+		schniff.UserID,
 		len(campsites),
 		len(campsites)+remainingSites,
 	)

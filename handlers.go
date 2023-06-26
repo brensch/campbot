@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -44,15 +45,23 @@ func HandleNewSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.Intera
 		return
 	}
 
+	var user *discordgo.User
+	if i.Member == nil {
+		user = i.User
+	} else {
+		user = i.Member.User
+	}
+
 	schniff := &Schniff{
 		CampgroundID:   data.Options[0].StringValue(),
 		CampgroundName: campground.Name,
 		StartDate:      startDate,
 		EndDate:        endDate,
-		UserID:         i.Member.User.ID,
-		UserNick:       i.Member.User.Username,
+		UserID:         user.ID,
+		UserNick:       user.Username,
 		SchniffID:      uuid.New().String(),
 		Active:         true,
+		CreationTime:   time.Now(),
 	}
 
 	err = sc.Add(schniff)
@@ -63,7 +72,7 @@ func HandleNewSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.Intera
 	duration := endDate.Sub(startDate).Hours() / 24 // calculates duration in days
 
 	embed := &discordgo.MessageEmbed{
-		Title: "New Schniff Created!",
+		Title: "New Schniff Created",
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Schniff ID",
@@ -205,8 +214,15 @@ func HandleRestartSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *
 	// In this case there are multiple autocomplete options. The Focused field shows which option user is focused on.
 	case data.Options[0].Focused:
 		allChoices := sc.GetSchniffsForUser(i.Member.User.ID)
+		var stoppedChoices []*Schniff
+		for _, schniff := range allChoices {
+			if schniff.Active {
+				continue
+			}
+			stoppedChoices = append(stoppedChoices, schniff)
+		}
 		userInput := data.Options[0].StringValue()
-		choices = suggestBestMatchesForSchniff(allChoices, userInput)
+		choices = suggestBestMatchesForSchniff(stoppedChoices, userInput)
 	}
 
 	if len(choices) > 10 {
@@ -222,4 +238,78 @@ func HandleRestartSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *
 	if err != nil {
 		log.Error("Cannot respond to interaction", zap.Error(err))
 	}
+}
+
+func HandleGuildMemberAdd(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
+	embed := &discordgo.MessageEmbed{
+		Color:       0x009900, // Green
+		Title:       "Let's get Schniffing",
+		Description: "Hello <@" + m.Member.User.ID + ">. Follow the 3 step schniff plan to experience the joys of schniffing.",
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "1",
+				Value:  "Type `/new-schniff` to create a new schniff.",
+				Inline: false,
+			},
+			{
+				Name:   "2",
+				Value:  "Fill out the fields that pop up, and press enter.",
+				Inline: false,
+			},
+			{
+				Name: "3",
+				Value: `I will dutifully schniff until I find something, and message you here when I do.
+				Go to the link in the message I send you and book the site ASAP.`,
+				Inline: false,
+			},
+			{
+				Name: "Notes",
+				Value: `- It is important to think about schniffer whilst enjoying your schniffed camping experience.
+- If you don't book the site fast enough, restart the schniff by typing '/restart-schniff' and selecting the schniff you want to restart.
+- I will notify you 15 seconds after it becomes available. It will normally be rebooked in about 10 minutes. Please panic when I message you.`,
+				Inline: false,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "To err is human, to schniff is divine.",
+		},
+	}
+
+	dmChannel, err := s.UserChannelCreate(m.User.ID)
+	if err != nil {
+		return
+	}
+
+	_, err = s.ChannelMessageSendEmbed(dmChannel.ID, embed)
+	if err != nil {
+		return
+	}
+
+	sendMessageToChannelInAllGuilds(s, "announcements", RandomSillyGreeting(m.Member.User.ID))
+}
+
+func RandomSillyGreeting(userID string) string {
+	rand.Seed(time.Now().UnixNano())
+
+	greetings := []string{
+		"Welcome to schnifftown, <@%s>.",
+		"It's schniff o'clock for <@%s>.",
+		"I was just thinking, today's a nice day to schniff, especially for <@%s>.",
+		"If you're <@%s>, it's time to schniff.",
+		"I was just talking about you, <@%s>. I said, \"I bet they're ready to schniff.\".",
+		"If <@%s> were a verb, it would be \"schniff\".",
+		"The humble consequence of carbon, <@%s> has arrived to schniff.",
+		"There will be a day that is the end. The collapse of time and all that stood within it. A day of nothing. This is not that day for <@%s>. It's a day to schniff.",
+		"In their last will and testament there is a codicil memorializing their appreciation for the schniffer and all those who serve it. <@%s> is ready to schniff.",
+		"<@%s> was first seen standing at the edge of the shore between the ancient marks of the high and low tide, a place that is neither land nor sea. But as the moonlight filtered through the darkness, it revealed a schniffer who has been to the beyond and witnessed the secrets of life and death.",
+	}
+
+	// Choose a random greeting template
+	template := greetings[rand.Intn(len(greetings))]
+
+	// Substitute the user ID into the template
+	greeting := fmt.Sprintf(template, userID)
+	greeting = fmt.Sprintf("%s\n\n%s", greeting, "Please check your DMs for instructions on how to use Schniffer.")
+
+	return greeting
 }

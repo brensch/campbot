@@ -5,6 +5,9 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./schniffs.json:/app/schniffs.json
+      - schniffs_volume:/schniffs
     env_file:
       - .env
+
+volumes:
+  schniffs_volume:

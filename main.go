@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	log := zap.NewExample()
 
 	botToken := os.Getenv("BOT_TOKEN")
@@ -38,21 +38,32 @@ func main() {
 	})
 	s.AddHandler(HandleGuildMemberAdd)
 
+	s.Identify.Intents = discordgo.IntentsGuildMembers
+
 	err = s.Open()
 	if err != nil {
 		log.Fatal("Cannot open the session", zap.Error(err))
 	}
 	defer s.Close()
 
+	// Register the commands
 	_, err = s.ApplicationCommandBulkOverwrite(s.State.User.ID, GuildID, commands)
 	if err != nil {
 		log.Fatal("Cannot register commands", zap.Error(err))
 	}
 
+	// Notify that the bot is online
+	err = sendMessageToChannelInAllGuilds(s, "announcements", "Schniffbot is online, ready to schniff.")
+	if err != nil {
+		log.Error("Unable to send message", zap.Error(err))
+	}
+
+	t := NewTracker()
+
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		for {
-			loop(ctx, log, s, sc)
+			loop(ctx, log, s, sc, t)
 			select {
 			case <-ticker.C:
 			case <-ctx.Done():
@@ -62,23 +73,55 @@ func main() {
 		}
 	}()
 
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		for {
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				log.Info("Context done")
+				return
+			}
+			embed := t.CreateEmbedSummary(sc)
+			err = sendEmbedToChannelInAllGuilds(s, "announcements", embed)
+			if err != nil {
+				log.Error("Unable to tracker update", zap.Error(err))
+				continue
+			}
+			t.Reset()
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	<-stop
+	cancel()
 	log.Info("Gracefully shutting down")
+
+	err = sendMessageToChannelInAllGuilds(s, "announcements", "Shutting down schniffbot")
+	if err != nil {
+		log.Error("Unable to send message", zap.Error(err))
+	}
 
 }
 
-func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection) {
+func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker) {
 	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc)
 
-	availabilities, err := DoRequests(ctx, olog, s.Client, requests)
+	// Deduplicate requests
+	deduplicatedRequests := DeduplicateAvailabilityRequests(requests)
+	t.IncrementRequests(len(deduplicatedRequests))
+
+	availabilities, err := DoRequests(ctx, olog, s.Client, deduplicatedRequests)
 	if err != nil {
 		olog.Error("Unable to get availability", zap.Error(err))
+		sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to get availability: %+v", err))
+		return
 	}
 
 	notifications, err := GenerateNotifications(ctx, olog, availabilities, sc)
 	if err != nil {
+		sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to generate notifications: %+v", err))
 		olog.Error("Unable to generate notifications", zap.Error(err))
 	}
 
@@ -105,12 +148,15 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 		}
 
 		// Mark the schniff as inactive
-		fmt.Println(schniff.SchniffID)
 		err = sc.SetActive(schniff.SchniffID, false)
 		if err != nil {
 			olog.Error("Unable to mark as inactive", zap.Error(err))
+			sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to mark schniff as inactive: %+v", err))
 			continue
 		}
+
+		// record we sent the notification
+		t.AddNotification(notification)
 
 	}
 }

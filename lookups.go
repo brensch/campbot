@@ -129,7 +129,11 @@ func suggestBestMatchesForSchniff(schniffs []*Schniff, userInput string) []*disc
 	var bestMatches []*discordgo.ApplicationCommandOptionChoice
 	for i := 0; i < len(scoredSchniffs) && i < 10; i++ {
 		schniff := scoredSchniffs[i].schniff
-		description := fmt.Sprintf("%s [%s]", schniff.CampgroundName, schniff.SchniffID)
+		description := fmt.Sprintf("%s [%s -> %s]",
+			schniff.CampgroundName,
+			schniff.StartDate.Format("2006-01-02"),
+			schniff.EndDate.Format("2006-01-02"),
+		)
 		// need to truncate to 100 characters because of Discord's limit
 		limit := 85
 		if len(description) > limit {

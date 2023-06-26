@@ -79,7 +79,6 @@ func (sc *SchniffCollection) SetActive(id string, active bool) error {
 		if schniff.SchniffID != id {
 			continue
 		}
-		fmt.Println("Found schniff", schniff.SchniffID, "setting active to", active)
 		schniff.Active = active
 		return sc.save()
 	}
