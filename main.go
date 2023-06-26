@@ -11,15 +11,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	GuildID = "1122072835985244201"
-)
-
 func main() {
 	ctx := context.Background()
 	log := zap.NewExample()
 
 	botToken := os.Getenv("BOT_TOKEN")
+	GuildID := os.Getenv("GUILD_ID")
 
 	var s *discordgo.Session
 	s, err := discordgo.New("Bot " + botToken)
@@ -39,13 +36,15 @@ func main() {
 			h(log, s, i, sc, cc)
 		}
 	})
+	s.AddHandler(HandleGuildMemberAdd)
+
 	err = s.Open()
 	if err != nil {
 		log.Fatal("Cannot open the session", zap.Error(err))
 	}
 	defer s.Close()
 
-	createdCommands, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, GuildID, commands)
+	_, err = s.ApplicationCommandBulkOverwrite(s.State.User.ID, GuildID, commands)
 	if err != nil {
 		log.Fatal("Cannot register commands", zap.Error(err))
 	}
@@ -67,13 +66,6 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 	<-stop
 	log.Info("Gracefully shutting down")
-
-	for _, cmd := range createdCommands {
-		err := s.ApplicationCommandDelete(s.State.User.ID, GuildID, cmd.ID)
-		if err != nil {
-			log.Error("Cannot delete command: %v", zap.String("command", cmd.Name), zap.Error(err))
-		}
-	}
 
 }
 
