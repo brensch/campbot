@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/brensch/campbot/stealthing"
+	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -181,7 +182,7 @@ func (c SummarisedCampground) String() string {
 	return fmt.Sprintf("%s - ", c.Name, c.ID)
 }
 
-func NewCampgroundCollection(ctx context.Context, log *zap.Logger, client *http.Client) (*CampgroundCollection, error) {
+func NewCampgroundCollection(ctx context.Context, log *zap.Logger, s *discordgo.Session, client *http.Client) (*CampgroundCollection, error) {
 	// get campgrounds if campgrounds.json doesn't exist
 	cc := &CampgroundCollection{
 		mu: sync.Mutex{},
@@ -190,7 +191,7 @@ func NewCampgroundCollection(ctx context.Context, log *zap.Logger, client *http.
 	_, err := os.Stat("campgrounds.json")
 	if os.IsNotExist(err) {
 		// update campgrounds
-		err = cc.UpdateCampgrounds(ctx, log, client)
+		err = cc.UpdateCampgrounds(ctx, log, s, client)
 		if err != nil {
 			log.Error("couldn't update campgrounds", zap.Error(err))
 			return nil, err
@@ -215,7 +216,7 @@ func NewCampgroundCollection(ctx context.Context, log *zap.Logger, client *http.
 }
 
 // UpdateCampgrounds updates the campground colleciton with the latest campgrounds
-func (cc *CampgroundCollection) UpdateCampgrounds(ctx context.Context, log *zap.Logger, client *http.Client) error {
+func (cc *CampgroundCollection) UpdateCampgrounds(ctx context.Context, log *zap.Logger, s *discordgo.Session, client *http.Client) error {
 	// get campgrounds
 	campgrounds, err := GetCampgrounds(ctx, log, s.Client)
 	if err != nil {

@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"time"
@@ -13,30 +11,23 @@ import (
 	"go.uber.org/zap"
 )
 
-// Bot parameters
 var (
-	GuildID        = flag.String("guild", "1122072835985244201", "Test guild ID. If not passed - bot registers commands globally")
-	BotToken       = flag.String("token", "", "Bot access token")
-	RemoveCommands = flag.Bool("rmcmd", true, "Remove all commands after shutdowning or not")
+	GuildID = "1122072835985244201"
 )
-
-var s *discordgo.Session
-
-func init() { flag.Parse() }
-
-func init() {
-	var err error
-	s, err = discordgo.New("Bot " + *BotToken)
-	if err != nil {
-		log.Fatalf("Invalid bot parameters: %v", err)
-	}
-}
 
 func main() {
 	ctx := context.Background()
 	log := zap.NewExample()
 
-	cc, err := NewCampgroundCollection(ctx, log, s.Client)
+	botToken := os.Getenv("BOT_TOKEN")
+
+	var s *discordgo.Session
+	s, err := discordgo.New("Bot " + botToken)
+	if err != nil {
+		log.Fatal("Invalid bot parameters", zap.Error(err))
+	}
+
+	cc, err := NewCampgroundCollection(ctx, log, s, s.Client)
 	if err != nil {
 		log.Fatal("Cannot get campground collection", zap.Error(err))
 	}
@@ -54,7 +45,7 @@ func main() {
 	}
 	defer s.Close()
 
-	createdCommands, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, *GuildID, commands)
+	createdCommands, err := s.ApplicationCommandBulkOverwrite(s.State.User.ID, GuildID, commands)
 	if err != nil {
 		log.Fatal("Cannot register commands", zap.Error(err))
 	}
@@ -78,7 +69,7 @@ func main() {
 	log.Info("Gracefully shutting down")
 
 	for _, cmd := range createdCommands {
-		err := s.ApplicationCommandDelete(s.State.User.ID, *GuildID, cmd.ID)
+		err := s.ApplicationCommandDelete(s.State.User.ID, GuildID, cmd.ID)
 		if err != nil {
 			log.Error("Cannot delete command: %v", zap.String("command", cmd.Name), zap.Error(err))
 		}
