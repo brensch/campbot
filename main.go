@@ -74,21 +74,21 @@ func main() {
 	}()
 
 	go func() {
-		ticker := time.NewTicker(24 * time.Hour)
 		for {
+			ticker := time.NewTimer(nextDuration(21, 0, 0)) // 9 PM
 			select {
 			case <-ticker.C:
+				embed := t.CreateEmbedSummary(sc)
+				err = sendEmbedToChannelInAllGuilds(s, "announcements", embed)
+				if err != nil {
+					log.Error("Unable to send tracker update", zap.Error(err))
+					continue
+				}
+				t.Reset()
 			case <-ctx.Done():
 				log.Info("Context done")
 				return
 			}
-			embed := t.CreateEmbedSummary(sc)
-			err = sendEmbedToChannelInAllGuilds(s, "announcements", embed)
-			if err != nil {
-				log.Error("Unable to tracker update", zap.Error(err))
-				continue
-			}
-			t.Reset()
 		}
 	}()
 
@@ -103,6 +103,15 @@ func main() {
 		log.Error("Unable to send message", zap.Error(err))
 	}
 
+}
+
+func nextDuration(hour, minute, second int) time.Duration {
+	now := time.Now()
+	nextTick := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, second, 0, now.Location())
+	if now.After(nextTick) {
+		nextTick = nextTick.Add(24 * time.Hour)
+	}
+	return nextTick.Sub(now)
 }
 
 func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker) {
