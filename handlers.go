@@ -162,7 +162,13 @@ func HandleNewSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *disc
 
 func HandleViewSchniffs(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
 	// get all this user's schniffs
-	schniffs := sc.GetSchniffsForUser(i.Member.User.ID)
+	var user *discordgo.User
+	if i.Member == nil {
+		user = i.User
+	} else {
+		user = i.Member.User
+	}
+	schniffs := sc.GetSchniffsForUser(user.ID)
 	table := GenerateTableMessage(schniffs)
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -210,10 +216,16 @@ func HandleRestartSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.In
 func HandleRestartSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
 	data := i.ApplicationCommandData()
 	var choices []*discordgo.ApplicationCommandOptionChoice
+	var user *discordgo.User
+	if i.Member == nil {
+		user = i.User
+	} else {
+		user = i.Member.User
+	}
 	switch {
 	// In this case there are multiple autocomplete options. The Focused field shows which option user is focused on.
 	case data.Options[0].Focused:
-		allChoices := sc.GetSchniffsForUser(i.Member.User.ID)
+		allChoices := sc.GetSchniffsForUser(user.ID)
 		var stoppedChoices []*Schniff
 		for _, schniff := range allChoices {
 			if schniff.Active {
