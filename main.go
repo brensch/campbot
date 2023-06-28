@@ -134,7 +134,7 @@ func main() {
 }
 
 func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker) {
-	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc)
+	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc, t)
 
 	// Deduplicate requests
 	deduplicatedRequests := DeduplicateAvailabilityRequests(requests)
@@ -158,13 +158,6 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 		if err != nil {
 			olog.Error("no such schniff", zap.Error(err))
 			continue
-		}
-		t.AddActiveSchniff(schniff.SchniffID)
-		t.AddActiveUser(schniff.UserNick)
-		currentDate := schniff.StartDate
-		for currentDate.Before(schniff.EndDate) || currentDate.Equal(schniff.EndDate) {
-			t.AddActiveDay(currentDate)
-			currentDate = currentDate.AddDate(0, 0, 1)
 		}
 
 		dmChannel, err := s.UserChannelCreate(schniff.UserID)

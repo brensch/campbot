@@ -10,25 +10,25 @@ import (
 )
 
 type tracker struct {
-	Notifications  []Notification
-	Requests       int
-	LastReset      time.Time
-	ActiveSchniffs map[string]struct{}
-	ActiveUsers    map[string]struct{}
-	ActiveDays     map[time.Time]struct{}
-	ActiveSites    map[string]struct{}
-	mu             sync.Mutex
+	Notifications     []Notification
+	Requests          int
+	LastReset         time.Time
+	ActiveSchniffs    map[string]struct{}
+	ActiveUsers       map[string]struct{}
+	ActiveDays        map[time.Time]struct{}
+	ActiveCampgrounds map[string]struct{}
+	mu                sync.Mutex
 }
 
 func NewTracker() *tracker {
 	return &tracker{
-		Notifications:  []Notification{},
-		Requests:       0,
-		LastReset:      time.Now(),
-		ActiveSchniffs: make(map[string]struct{}),
-		ActiveUsers:    make(map[string]struct{}),
-		ActiveDays:     make(map[time.Time]struct{}),
-		ActiveSites:    make(map[string]struct{}),
+		Notifications:     []Notification{},
+		Requests:          0,
+		LastReset:         time.Now(),
+		ActiveSchniffs:    make(map[string]struct{}),
+		ActiveUsers:       make(map[string]struct{}),
+		ActiveDays:        make(map[time.Time]struct{}),
+		ActiveCampgrounds: make(map[string]struct{}),
 
 		mu: sync.Mutex{},
 	}
@@ -69,6 +69,13 @@ func (t *tracker) AddActiveDay(date time.Time) {
 	t.ActiveDays[date] = struct{}{}
 }
 
+func (t *tracker) AddActiveCampground(campgroundID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.ActiveCampgrounds[campgroundID] = struct{}{}
+}
+
 func (t *tracker) Reset() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -97,7 +104,6 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	for username := range usernames {
 		usernamesSlice = append(usernamesSlice, username)
 	}
-
 	// Join usernames with a comma and a space
 	usernamesString := strings.Join(usernamesSlice, ", ")
 
@@ -106,9 +112,16 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	for username := range t.ActiveUsers {
 		activeUsernamesSlice = append(activeUsernamesSlice, username)
 	}
-
-	// Join usernames with a comma and a space
+	// Join activeusernames with a comma and a space
 	activeUsernameString := strings.Join(activeUsernamesSlice, ", ")
+
+	// Convert the map to a slice for easier formatting
+	campgroundNamesSlice := make([]string, 0, len(t.ActiveCampgrounds))
+	for campground := range t.ActiveCampgrounds {
+		campgroundNamesSlice = append(campgroundNamesSlice, campground)
+	}
+	// Join usernames with a comma and a space
+	campgroundNamesString := strings.Join(campgroundNamesSlice, ", ")
 
 	totalRequests := t.Requests
 	totalNotifications := len(t.Notifications)
@@ -134,7 +147,7 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 				Inline: true,
 			},
 			{
-				Name:   "Schniffists Notified",
+				Name:   "Schniffists who got schniffs",
 				Value:  usernamesString,
 				Inline: false,
 			},
@@ -144,18 +157,18 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 				Inline: false,
 			},
 			{
+				Name:   "Campgrounds being tracked",
+				Value:  campgroundNamesString,
+				Inline: false,
+			},
+			{
 				Name:   "Active Schniffs",
 				Value:  fmt.Sprintf("%d", len(t.ActiveSchniffs)),
 				Inline: false,
 			},
 			{
-				Name:   "Days being tracked",
+				Name:   "Dates being tracked",
 				Value:  fmt.Sprintf("%d", len(t.ActiveDays)),
-				Inline: false,
-			},
-			{
-				Name:   "Sites being tracked",
-				Value:  fmt.Sprintf("%d", len(t.ActiveSites)),
 				Inline: false,
 			},
 		},
