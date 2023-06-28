@@ -146,7 +146,8 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 	}
 
 	message := fmt.Sprintf(`<@%s>, I just schniffed some available campsites for you.
-Showing the top %d campsites by days available. %d total campsites with availabilities.`,
+Showing the top %d campsites by days available.
+%d total campsites with availabilities.`,
 		schniff.UserID,
 		len(campsites),
 		len(campsites)+remainingSites,
