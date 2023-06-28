@@ -95,7 +95,7 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 	}
 
 	// Create an opening sentence with more details about the campground and the date range
-	title := fmt.Sprintf("%s\n%s: %s to %s",
+	title := fmt.Sprintf("%s\n%s\n%s to %s",
 		RandomSillyHeader(),
 		schniff.CampgroundName,
 		schniff.StartDate.Format("2006-01-02"),
