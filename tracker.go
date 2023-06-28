@@ -110,18 +110,18 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	// Convert the map to a slice for easier formatting
 	activeUsernamesSlice := make([]string, 0, len(t.ActiveUsers))
 	for username := range t.ActiveUsers {
-		activeUsernamesSlice = append(activeUsernamesSlice, username)
+		activeUsernamesSlice = append(activeUsernamesSlice, fmt.Sprintf("- %s", username))
 	}
 	// Join activeusernames with a comma and a space
-	activeUsernameString := strings.Join(activeUsernamesSlice, ", ")
+	activeUsernameString := strings.Join(activeUsernamesSlice, "\n")
 
 	// Convert the map to a slice for easier formatting
 	campgroundNamesSlice := make([]string, 0, len(t.ActiveCampgrounds))
 	for campground := range t.ActiveCampgrounds {
-		campgroundNamesSlice = append(campgroundNamesSlice, campground)
+		campgroundNamesSlice = append(campgroundNamesSlice, fmt.Sprintf("- %s", campground))
 	}
 	// Join usernames with a comma and a space
-	campgroundNamesString := strings.Join(campgroundNamesSlice, ", ")
+	campgroundNamesString := strings.Join(campgroundNamesSlice, "\n")
 
 	totalRequests := t.Requests
 	totalNotifications := len(t.Notifications)
