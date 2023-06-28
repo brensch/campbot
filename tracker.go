@@ -102,10 +102,13 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	// Convert the map to a slice for easier formatting
 	usernamesSlice := make([]string, 0, len(usernames))
 	for username := range usernames {
-		usernamesSlice = append(usernamesSlice, username)
+		usernamesSlice = append(usernamesSlice, fmt.Sprintf("- %s", username))
 	}
 	// Join usernames with a comma and a space
-	usernamesString := strings.Join(usernamesSlice, ", ")
+	usernamesString := strings.Join(usernamesSlice, "\n")
+	if usernamesString == "" {
+		usernamesString = "No bueno today."
+	}
 
 	// Convert the map to a slice for easier formatting
 	activeUsernamesSlice := make([]string, 0, len(t.ActiveUsers))
@@ -147,6 +150,16 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 				Inline: true,
 			},
 			{
+				Name:   "Active Schniffs",
+				Value:  fmt.Sprintf("%d", len(t.ActiveSchniffs)),
+				Inline: false,
+			},
+			{
+				Name:   "Dates being tracked",
+				Value:  fmt.Sprintf("%d", len(t.ActiveDays)),
+				Inline: false,
+			},
+			{
 				Name:   "Schniffists who got schniffs",
 				Value:  usernamesString,
 				Inline: false,
@@ -159,16 +172,6 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 			{
 				Name:   "Campgrounds being tracked",
 				Value:  campgroundNamesString,
-				Inline: false,
-			},
-			{
-				Name:   "Active Schniffs",
-				Value:  fmt.Sprintf("%d", len(t.ActiveSchniffs)),
-				Inline: false,
-			},
-			{
-				Name:   "Dates being tracked",
-				Value:  fmt.Sprintf("%d", len(t.ActiveDays)),
 				Inline: false,
 			},
 		},
