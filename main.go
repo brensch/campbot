@@ -94,7 +94,8 @@ func main() {
 		for {
 			// Calculate next duration
 			now := time.Now()
-			location, _ := time.LoadLocation("America/Los_Angeles") // PST timezone
+			offset := -8 * 60 * 60
+			location := time.FixedZone("PST", offset)
 			now = now.In(location)
 			next := time.Date(now.Year(), now.Month(), now.Day(), 21, 0, 0, 0, location)
 			if now.After(next) {
@@ -130,20 +131,6 @@ func main() {
 		log.Error("Unable to send message", zap.Error(err))
 	}
 
-}
-
-func nextDuration(hour, minute, second int) time.Duration {
-	pst, err := time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		// needs to never fail
-		panic(err)
-	}
-	now := time.Now()
-	nextTick := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, second, 0, pst)
-	if now.After(nextTick) {
-		nextTick = nextTick.Add(24 * time.Hour)
-	}
-	return nextTick.Sub(now)
 }
 
 func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker) {
