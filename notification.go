@@ -145,8 +145,8 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 		}
 	}
 
-	message := fmt.Sprintf(`<@%s>, I just schniffed some available campsites for you!
-Showing the top %d campsites by days available, out of %d total campsites.`,
+	message := fmt.Sprintf(`<@%s>, I just schniffed some available campsites for you.
+Showing the top %d campsites by days available. %d total campsites with availabilities.`,
 		schniff.UserID,
 		len(campsites),
 		len(campsites)+remainingSites,
@@ -156,9 +156,9 @@ Showing the top %d campsites by days available, out of %d total campsites.`,
 		Name: "Remember",
 		Value: `- You must act fast to get one of these sites. 
 - The links above take you directly to the campsite page to book. Find the availability and click it.
-- If there are no availabilities, it is because you were too slow. I do not make mistakes.
-- The recreation.gov app will sometimes open to the last page you were looking at despite clicking a link to a different page. Double check the link has opened correctly.
-- I have stopped monitoring the site since I schniffed you something. If you miss out on one of the availabilities below, please restart this schniff by typing '/restart-schniff/'"`,
+- If there are no availabilities when you clicked the link, it is because you were too slow. I do not make mistakes.
+- The recreation.gov mobile app will sometimes open to the last page you were looking at despite clicking a link to a different page. Double check the link has opened correctly.
+- I have stopped monitoring the site since I schniffed you something. If you miss out on one of the availabilities above, please restart this schniff by typing '/restart-schniff/'`,
 	}
 
 	// Create the embed message
@@ -166,7 +166,7 @@ Showing the top %d campsites by days available, out of %d total campsites.`,
 		Title:       title,
 		Description: message,
 		Fields:      fields,
-		Color:       0x00ff00, // Change this to any color you want
+		Color:       0x009900, // Change this to any color you want
 	}
 
 	return embed, nil

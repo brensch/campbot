@@ -119,7 +119,7 @@ func HandleNewSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.Intera
 				Inline: true,
 			},
 		},
-		Color: 0x00ff00, // Green color
+		Color: 0x009900, // Green color
 	}
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

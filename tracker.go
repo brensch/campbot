@@ -13,6 +13,10 @@ type tracker struct {
 	Notifications []Notification
 	Requests      int
 	LastReset     time.Time
+	ActiveScniffs map[string]struct{}
+	ActiveUsers   map[string]struct{}
+	ActiveDays    map[time.Time]struct{}
+	ActiveSites   map[string]struct{}
 	mu            sync.Mutex
 }
 
@@ -21,7 +25,12 @@ func NewTracker() *tracker {
 		Notifications: []Notification{},
 		Requests:      0,
 		LastReset:     time.Now(),
-		mu:            sync.Mutex{},
+		ActiveScniffs: make(map[string]struct{}),
+		ActiveUsers:   make(map[string]struct{}),
+		ActiveDays:    make(map[time.Time]struct{}),
+		ActiveSites:   make(map[string]struct{}),
+
+		mu: sync.Mutex{},
 	}
 }
 
@@ -37,6 +46,27 @@ func (t *tracker) IncrementRequests(count int) {
 	defer t.mu.Unlock()
 
 	t.Requests += count
+}
+
+func (t *tracker) AddActiveSchniff(schniffID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.ActiveScniffs[schniffID] = struct{}{}
+}
+
+func (t *tracker) AddActiveUser(userID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.ActiveUsers[userID] = struct{}{}
+}
+
+func (t *tracker) AddActiveDay(date time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.ActiveDays[date] = struct{}{}
 }
 
 func (t *tracker) Reset() {
@@ -71,13 +101,22 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	// Join usernames with a comma and a space
 	usernamesString := strings.Join(usernamesSlice, ", ")
 
+	// Convert the map to a slice for easier formatting
+	activeUsernamesSlice := make([]string, 0, len(usernames))
+	for username := range usernames {
+		activeUsernamesSlice = append(activeUsernamesSlice, username)
+	}
+
+	// Join usernames with a comma and a space
+	activeUsernameString := strings.Join(activeUsernamesSlice, ", ")
+
 	totalRequests := t.Requests
 	totalNotifications := len(t.Notifications)
 	elapsed := time.Since(t.LastReset).Hours()
 	requestsPerHour := float64(totalRequests) / elapsed
 
 	return &discordgo.MessageEmbed{
-		Title: "Schniffbot Activity Summary over last " + fmt.Sprintf("%.2f", elapsed) + " hours",
+		Title: "Schniffer summary:\nLast " + fmt.Sprintf("%.2f", elapsed) + " hours",
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Total Notifications",
@@ -95,11 +134,31 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 				Inline: true,
 			},
 			{
-				Name:   "Users Notified",
+				Name:   "Schniffists Notified",
 				Value:  usernamesString,
 				Inline: false,
 			},
+			{
+				Name:   "Schniffists with active schniffs",
+				Value:  activeUsernameString,
+				Inline: false,
+			},
+			{
+				Name:   "Active Schniffs",
+				Value:  activeUsernameString,
+				Inline: false,
+			},
+			{
+				Name:   "Days being tracked",
+				Value:  activeUsernameString,
+				Inline: false,
+			},
+			{
+				Name:   "Sites being tracked",
+				Value:  activeUsernameString,
+				Inline: false,
+			},
 		},
-		Color: 0x00ff00, // Green color
+		Color: 0x009900, // Green color
 	}
 }

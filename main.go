@@ -74,17 +74,44 @@ func main() {
 	}()
 
 	go func() {
+		ticker := time.NewTicker(60 * time.Second)
 		for {
-			ticker := time.NewTimer(nextDuration(21, 0, 0)) // 9 PM
+			select {
+			case <-ticker.C:
+			case <-ctx.Done():
+				log.Info("Context done")
+				return
+			}
+			embed := t.CreateEmbedSummary(sc)
+			err := sendEmbedToChannelInAllGuilds(s, "announcements", embed)
+			if err != nil {
+				log.Error("Unable to send tracker update", zap.Error(err))
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			// Calculate next duration
+			now := time.Now()
+			location, _ := time.LoadLocation("America/Los_Angeles") // PST timezone
+			now = now.In(location)
+			next := time.Date(now.Year(), now.Month(), now.Day(), 21, 0, 0, 0, location)
+			if now.After(next) {
+				// If time has passed 9 PM today, schedule for next day
+				next = next.Add(24 * time.Hour)
+			}
+			duration := next.Sub(now)
+
+			ticker := time.NewTimer(duration)
 			select {
 			case <-ticker.C:
 				embed := t.CreateEmbedSummary(sc)
-				err = sendEmbedToChannelInAllGuilds(s, "announcements", embed)
+				err := sendEmbedToChannelInAllGuilds(s, "announcements", embed)
 				if err != nil {
 					log.Error("Unable to send tracker update", zap.Error(err))
-					continue
 				}
-				t.Reset()
+				ticker.Reset(24 * time.Hour) // Reset to 24 hours
 			case <-ctx.Done():
 				log.Info("Context done")
 				return
@@ -106,8 +133,13 @@ func main() {
 }
 
 func nextDuration(hour, minute, second int) time.Duration {
+	pst, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		// needs to never fail
+		panic(err)
+	}
 	now := time.Now()
-	nextTick := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, second, 0, now.Location())
+	nextTick := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, second, 0, pst)
 	if now.After(nextTick) {
 		nextTick = nextTick.Add(24 * time.Hour)
 	}
@@ -140,6 +172,14 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 			olog.Error("no such schniff", zap.Error(err))
 			continue
 		}
+		t.AddActiveSchniff(schniff.SchniffID)
+		t.AddActiveUser(schniff.UserID)
+		currentDate := schniff.StartDate
+		for currentDate.Before(schniff.EndDate) || currentDate.Equal(schniff.EndDate) {
+			t.AddActiveDay(currentDate)
+			currentDate = currentDate.AddDate(0, 0, 1)
+		}
+
 		dmChannel, err := s.UserChannelCreate(schniff.UserID)
 		if err != nil {
 			olog.Error("Unable to create dmChannel", zap.Error(err))
