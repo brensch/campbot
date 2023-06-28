@@ -10,25 +10,25 @@ import (
 )
 
 type tracker struct {
-	Notifications []Notification
-	Requests      int
-	LastReset     time.Time
-	ActiveScniffs map[string]struct{}
-	ActiveUsers   map[string]struct{}
-	ActiveDays    map[time.Time]struct{}
-	ActiveSites   map[string]struct{}
-	mu            sync.Mutex
+	Notifications  []Notification
+	Requests       int
+	LastReset      time.Time
+	ActiveSchniffs map[string]struct{}
+	ActiveUsers    map[string]struct{}
+	ActiveDays     map[time.Time]struct{}
+	ActiveSites    map[string]struct{}
+	mu             sync.Mutex
 }
 
 func NewTracker() *tracker {
 	return &tracker{
-		Notifications: []Notification{},
-		Requests:      0,
-		LastReset:     time.Now(),
-		ActiveScniffs: make(map[string]struct{}),
-		ActiveUsers:   make(map[string]struct{}),
-		ActiveDays:    make(map[time.Time]struct{}),
-		ActiveSites:   make(map[string]struct{}),
+		Notifications:  []Notification{},
+		Requests:       0,
+		LastReset:      time.Now(),
+		ActiveSchniffs: make(map[string]struct{}),
+		ActiveUsers:    make(map[string]struct{}),
+		ActiveDays:     make(map[time.Time]struct{}),
+		ActiveSites:    make(map[string]struct{}),
 
 		mu: sync.Mutex{},
 	}
@@ -52,7 +52,7 @@ func (t *tracker) AddActiveSchniff(schniffID string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.ActiveScniffs[schniffID] = struct{}{}
+	t.ActiveSchniffs[schniffID] = struct{}{}
 }
 
 func (t *tracker) AddActiveUser(userID string) {
@@ -102,8 +102,8 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 	usernamesString := strings.Join(usernamesSlice, ", ")
 
 	// Convert the map to a slice for easier formatting
-	activeUsernamesSlice := make([]string, 0, len(usernames))
-	for username := range usernames {
+	activeUsernamesSlice := make([]string, 0, len(t.ActiveUsers))
+	for username := range t.ActiveUsers {
 		activeUsernamesSlice = append(activeUsernamesSlice, username)
 	}
 
@@ -145,17 +145,17 @@ func (t *tracker) CreateEmbedSummary(sc *SchniffCollection) *discordgo.MessageEm
 			},
 			{
 				Name:   "Active Schniffs",
-				Value:  activeUsernameString,
+				Value:  fmt.Sprintf("%d", len(t.ActiveSchniffs)),
 				Inline: false,
 			},
 			{
 				Name:   "Days being tracked",
-				Value:  activeUsernameString,
+				Value:  fmt.Sprintf("%d", len(t.ActiveDays)),
 				Inline: false,
 			},
 			{
 				Name:   "Sites being tracked",
-				Value:  activeUsernameString,
+				Value:  fmt.Sprintf("%d", len(t.ActiveSites)),
 				Inline: false,
 			},
 		},

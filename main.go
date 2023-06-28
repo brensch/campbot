@@ -160,7 +160,7 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 			continue
 		}
 		t.AddActiveSchniff(schniff.SchniffID)
-		t.AddActiveUser(schniff.UserID)
+		t.AddActiveUser(schniff.UserNick)
 		currentDate := schniff.StartDate
 		for currentDate.Before(schniff.EndDate) || currentDate.Equal(schniff.EndDate) {
 			t.AddActiveDay(currentDate)
