@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -276,7 +275,8 @@ func HandleGuildMemberAdd(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 			},
 			{
 				Name: "Notes",
-				Value: `- It is important to think about schniffer whilst enjoying your schniffed camping experience.
+				Value: `- We will notify you of even partial availability for a period you are schniffing. 
+- It is important to think about schniffer whilst enjoying your schniffed camping experience.
 - If you don't book the site fast enough, restart the schniff by typing '/restart-schniff' and selecting the schniff you want to restart.
 - I will notify you 15 seconds after it becomes available. It will normally be rebooked in about 10 minutes. Please panic when I message you.`,
 				Inline: false,
@@ -298,30 +298,4 @@ func HandleGuildMemberAdd(s *discordgo.Session, m *discordgo.GuildMemberAdd) {
 	}
 
 	sendMessageToChannelInAllGuilds(s, "announcements", RandomSillyGreeting(m.Member.User.ID))
-}
-
-func RandomSillyGreeting(userID string) string {
-	rand.Seed(time.Now().UnixNano())
-
-	greetings := []string{
-		"Welcome to schnifftown, <@%s>.",
-		"It's schniff o'clock for <@%s>.",
-		"I was just thinking, today's a nice day to schniff, especially for <@%s>.",
-		"If you're <@%s>, it's time to schniff.",
-		"I was just talking about you, <@%s>. I said, \"I bet they're ready to schniff.\".",
-		"If <@%s> were a verb, it would be \"schniff\".",
-		"The humble consequence of carbon, <@%s> has arrived to schniff.",
-		"There will be a day that is the end. The collapse of time and all that stood within it. A day of nothing. This is not that day for <@%s>. It's a day to schniff.",
-		"In their last will and testament there is a codicil memorializing their appreciation for the schniffer and all those who serve it. <@%s> is ready to schniff.",
-		"<@%s> was first seen standing at the edge of the shore between the ancient marks of the high and low tide, a place that is neither land nor sea. But as the moonlight filtered through the darkness, it revealed a schniffer who has been to the beyond and witnessed the secrets of life and death.",
-	}
-
-	// Choose a random greeting template
-	template := greetings[rand.Intn(len(greetings))]
-
-	// Substitute the user ID into the template
-	greeting := fmt.Sprintf(template, userID)
-	greeting = fmt.Sprintf("%s\n\n%s", greeting, "Please check your DMs for instructions on how to use Schniffer.")
-
-	return greeting
 }

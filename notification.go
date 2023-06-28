@@ -95,7 +95,8 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 	}
 
 	// Create an opening sentence with more details about the campground and the date range
-	title := fmt.Sprintf("Successfully schniffed! %s from %s to %s",
+	title := fmt.Sprintf("%s\n%s: %s to %s",
+		RandomSillyHeader(),
 		schniff.CampgroundName,
 		schniff.StartDate.Format("2006-01-02"),
 		schniff.EndDate.Format("2006-01-02"),
@@ -132,29 +133,33 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 	}
 
 	// Prepare fields for the embed
-	fields := make([]*discordgo.MessageEmbedField, len(campsites))
+	fields := make([]*discordgo.MessageEmbedField, len(campsites)+1)
 
 	// Add sorted campsites to the fields, with available days as percentage
 	for i, campsite := range campsites {
 		campsiteLink := baseURL + campsite.campsiteID
-		availabilityPercentage := float64(campsite.daysCount) / float64(totalDays) * 100
 		fields[i] = &discordgo.MessageEmbedField{
-			Name:   campsite.campsiteID,
-			Value:  fmt.Sprintf("[Covers %.0f%%](%s)", availabilityPercentage, campsiteLink),
+			Name:   fmt.Sprintf("Campsite %s", campsite.campsiteID),
+			Value:  fmt.Sprintf("[%d of %d days available](%s)", campsite.daysCount, totalDays, campsiteLink),
 			Inline: false,
 		}
 	}
 
-	message := fmt.Sprintf(`Yo <@%s>, we found some availabilities open up for the time you're schniffing.
-	Showing the top %d most available campsites. 
-	Found %d in total.
-	
-	IMPORTANT: You must act fast to get one of these sites. Click the link and complete the form in the website.
-	We have stopped monitoring the site. If you miss out on one of the availabilities below, please restart this schniff by typing '/restart-schniff'`,
+	message := fmt.Sprintf(`<@%s>, I just schniffed some available campsites for you!
+Showing the top %d campsites by days available, out of %d total campsites.`,
 		schniff.UserID,
 		len(campsites),
 		len(campsites)+remainingSites,
 	)
+
+	fields[len(campsites)] = &discordgo.MessageEmbedField{
+		Name: "Remember",
+		Value: `- You must act fast to get one of these sites. 
+- The links above take you directly to the campsite page to book. Find the availability and click it.
+- If there are no availabilities, it is because you were too slow. I do not make mistakes.
+- The recreation.gov app will sometimes open to the last page you were looking at despite clicking a link to a different page. Double check the link has opened correctly.
+- I have stopped monitoring the site since I schniffed you something. If you miss out on one of the availabilities below, please restart this schniff by typing '/restart-schniff/'"`,
+	}
 
 	// Create the embed message
 	embed := &discordgo.MessageEmbed{

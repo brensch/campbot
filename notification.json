@@ -1452,13 +1452,5 @@
     { "CampsiteID": "71929", "Date": "2023-09-29T00:00:00Z" },
     { "CampsiteID": "71929", "Date": "2023-09-04T00:00:00Z" }
   ],
-  "Schniff": {
-    "campground_id": "231958",
-    "campground_name": "",
-    "campsite_ids": null,
-    "start_date": "2023-07-01T00:00:00Z",
-    "end_date": "2023-09-01T00:00:00Z",
-    "user_id": "175165341440147456",
-    "user_nick": "brensch"
-  }
+  "SchniffID": "df3699a3-a04e-484a-bdc1-9344893f8cf9"
 }
