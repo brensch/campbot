@@ -74,23 +74,6 @@ func main() {
 	}()
 
 	go func() {
-		ticker := time.NewTicker(60 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-			case <-ctx.Done():
-				log.Info("Context done")
-				return
-			}
-			embed := t.CreateEmbedSummary(sc)
-			err := sendEmbedToChannelInAllGuilds(s, "announcements", embed)
-			if err != nil {
-				log.Error("Unable to send tracker update", zap.Error(err))
-			}
-		}
-	}()
-
-	go func() {
 		for {
 			// Calculate next duration
 			now := time.Now()
