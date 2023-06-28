@@ -164,6 +164,8 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 			continue
 		}
 
+		sendMessageToChannelInAllGuilds(s, "announcements", RandomSillyBroadcast(schniff.UserID))
+
 		// record we sent the notification
 		t.AddNotification(notification)
 
