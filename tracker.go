@@ -83,6 +83,11 @@ func (t *tracker) Reset() {
 	t.Notifications = []Notification{}
 	t.Requests = 0
 	t.LastReset = time.Now()
+	t.ActiveSchniffs = make(map[string]struct{})
+	t.ActiveUsers = make(map[string]struct{})
+	t.ActiveDays = make(map[time.Time]struct{})
+	t.ActiveCampgrounds = make(map[string]struct{})
+
 }
 
 // CreateEmbedSummary creates a summary of the tracker state in a discordgo.MessageEmbed.

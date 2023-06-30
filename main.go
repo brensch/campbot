@@ -101,6 +101,7 @@ func main() {
 				if err != nil {
 					log.Error("Unable to send tracker update", zap.Error(err))
 				}
+				t.Reset()
 				ticker.Reset(24 * time.Hour) // Reset to 24 hours
 			case <-ctx.Done():
 				log.Info("Context done")
