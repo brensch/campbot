@@ -7,7 +7,7 @@ services:
     volumes:
       - ./schniffs:/app/schniffs
       - ./credentials:/container/credentials
-    # environment:
-    #   GOOGLE_APPLICATION_CREDENTIALS: /credentials/service-account-key.json
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /credentials/service-account-key.json
     env_file:
       - .env
