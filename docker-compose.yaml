@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./schniffs:/app/schniffs
-      - ./credentials:/container/credentials
+      - ./credentials:/app/credentials
     environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /credentials/service-account-key.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account-key.json
     env_file:
       - .env
