@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const retryLimit = 3
+
 type Availability struct {
 	Campsites map[string]Campsite `json:"campsites,omitempty"`
 	Count     int                 `json:"count,omitempty"`
@@ -74,31 +76,49 @@ func GetAvailability(ctx context.Context, olog *zap.Logger, client *pc.Client, c
 	v.Add("start_date", monthStart.Format("2006-01-02T15:04:05.000Z"))
 	req.URL.RawQuery = v.Encode()
 
-	res, err := client.Do(req, log)
-	if err != nil {
-		log.Error("couldn't do request", zap.Error(err))
-		return AvailabilityWithID{}, err
-	}
-	defer res.Body.Close()
-
-	resContents, err := io.ReadAll(res.Body)
-	if err != nil {
-		log.Error("couldn't read response", zap.Error(err))
-		return AvailabilityWithID{}, err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		// Leaving this as just a warning so that logs don't count as errors until they fail the retry
-		log.Warn("got bad statuscode getting availability", zap.Int("status_code", res.StatusCode))
-		log.Debug("body of bad request", zap.String("body", string(resContents)))
-		return AvailabilityWithID{}, fmt.Errorf(string(resContents))
-	}
-
+	retries := 0
 	var availability Availability
-	err = json.Unmarshal(resContents, &availability)
-	if err != nil {
-		log.Error("couldn't unmarshal", zap.Error(err))
-		return AvailabilityWithID{}, err
+
+	for {
+		if retries >= retryLimit {
+			return AvailabilityWithID{}, err
+		}
+		if retries > 0 {
+			log.Debug("retrying request", zap.Int("retries", retries))
+			time.Sleep(time.Duration(retries) * time.Second)
+		}
+
+		res, err := client.Do(req, log)
+		if err != nil {
+			log.Error("couldn't do request", zap.Error(err))
+			retries++
+			continue
+		}
+		defer res.Body.Close()
+
+		resContents, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Error("couldn't read response", zap.Error(err))
+			retries++
+			continue
+		}
+
+		if res.StatusCode != http.StatusOK {
+			log.Warn("got bad statuscode getting availability", zap.Int("status_code", res.StatusCode))
+			log.Debug("body of bad request", zap.String("body", string(resContents)))
+			err = fmt.Errorf("Got bad status code: %d", res.StatusCode)
+			retries++
+			continue
+			// Leaving this as just a warning so that logs don't count as errors until they fail the retry
+		}
+		err = json.Unmarshal(resContents, &availability)
+		if err != nil {
+			log.Error("couldn't unmarshal", zap.Error(err))
+			retries++
+			continue
+		}
+
+		break
 	}
 
 	log.Debug("completed getting availability from api", zap.Duration("duration", time.Since(start)))
