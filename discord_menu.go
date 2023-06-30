@@ -46,6 +46,13 @@ var (
 					Required:     false,
 					Autocomplete: false,
 				},
+				{
+					Name:         "minimum-consecutive-days",
+					Description:  "Minimum number of consecutive available days required to trigger a notification. (Default: 1)",
+					Type:         discordgo.ApplicationCommandOptionInteger,
+					Required:     false,
+					Autocomplete: false,
+				},
 			},
 		},
 		{

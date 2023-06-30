@@ -19,13 +19,14 @@ type Schniff struct {
 	Active       bool      `json:"active"`
 	CreationTime time.Time `json:"creation_time"`
 
-	CampgroundID   string    `json:"campground_id"`
-	CampgroundName string    `json:"campground_name"`
-	CampsiteIDs    []string  `json:"campsite_ids"`
-	StartDate      time.Time `json:"start_date"`
-	EndDate        time.Time `json:"end_date"`
-	UserID         string    `json:"user_id"`
-	UserNick       string    `json:"user_nick"`
+	CampgroundID           string    `json:"campground_id"`
+	CampgroundName         string    `json:"campground_name"`
+	CampsiteIDs            []string  `json:"campsite_ids"`
+	StartDate              time.Time `json:"start_date"`
+	EndDate                time.Time `json:"end_date"`
+	UserID                 string    `json:"user_id"`
+	UserNick               string    `json:"user_nick"`
+	MinimumConsecutiveDays int64     `json:"minimum_consecutive_days"`
 }
 
 type SchniffCollection struct {

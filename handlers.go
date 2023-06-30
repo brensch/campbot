@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -11,38 +12,66 @@ import (
 
 func HandleNewSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection) {
 	data := i.ApplicationCommandData()
-	startDate, err := time.Parse("2006-01-02", data.Options[1].StringValue())
-	if err != nil {
+
+	var campground SummarisedCampground
+	var startDate, endDate time.Time
+	var campsiteList []string
+	minConsecutiveDays := int64(1)
+	var err error
+	for _, option := range data.Options {
+		switch option.Name {
+		case "campground":
+			campground, err = cc.GetCampground(option.StringValue())
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: fmt.Sprintf("Campground not found: %v", option.StringValue()),
+					},
+				})
+				return
+			}
+		case "start":
+			startDate, err = time.Parse("2006-01-02", option.StringValue())
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: fmt.Sprintf("Invalid start date: %v", err),
+					},
+				})
+				return
+			}
+		case "end":
+			endDate, err = time.Parse("2006-01-02", option.StringValue())
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Content: fmt.Sprintf("Invalid end date: %v", err),
+					},
+				})
+				return
+			}
+		case "campsite-list":
+			campsiteList = strings.Split(option.StringValue(), ",")
+		case "minimum-consecutive-days":
+			minConsecutiveDays = option.IntValue()
+		}
+	}
+
+	if startDate.After(endDate) {
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("Invalid start date: %v", err),
+				Content: "Start date must be before end date",
 			},
 		})
 		return
 	}
 
-	endDate, err := time.Parse("2006-01-02", data.Options[2].StringValue())
-	if err != nil {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("Invalid end date: %v", err),
-			},
-		})
-		return
-	}
-
-	campground, err := cc.GetCampground(data.Options[0].StringValue())
-	if err != nil {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("Campground not found: %v", data.Options[0].StringValue()),
-			},
-		})
-		return
-	}
+	_ = campsiteList
+	_ = minConsecutiveDays
 
 	var user *discordgo.User
 	if i.Member == nil {
@@ -52,15 +81,17 @@ func HandleNewSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.Intera
 	}
 
 	schniff := &Schniff{
-		CampgroundID:   data.Options[0].StringValue(),
-		CampgroundName: campground.Name,
-		StartDate:      startDate,
-		EndDate:        endDate,
-		UserID:         user.ID,
-		UserNick:       user.Username,
-		SchniffID:      uuid.New().String(),
-		Active:         true,
-		CreationTime:   time.Now(),
+		CampgroundID:           data.Options[0].StringValue(),
+		CampgroundName:         campground.Name,
+		StartDate:              startDate,
+		EndDate:                endDate,
+		UserID:                 user.ID,
+		UserNick:               user.Username,
+		SchniffID:              uuid.New().String(),
+		Active:                 true,
+		CreationTime:           time.Now(),
+		CampsiteIDs:            campsiteList,
+		MinimumConsecutiveDays: minConsecutiveDays,
 	}
 
 	err = sc.Add(schniff)

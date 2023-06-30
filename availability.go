@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/brensch/campbot/stealthing"
+	pc "github.com/brensch/proxy/client"
 
 	"go.uber.org/zap"
 )
@@ -50,22 +51,20 @@ func GetStartOfMonth(input time.Time) time.Time {
 }
 
 // GetAvailability ensures that the targettime is snapped to the start of the month, then queries the API for all availabilities at that ground
-func GetAvailability(ctx context.Context, olog *zap.Logger, client *http.Client, campgroundID string, targetTime time.Time) (AvailabilityWithID, error) {
+func GetAvailability(ctx context.Context, olog *zap.Logger, client *pc.Client, campgroundID string, targetTime time.Time) (AvailabilityWithID, error) {
 	start := time.Now()
 	log := olog.With(
 		zap.String("campground", campgroundID),
 		zap.Time("target_time", targetTime),
 	)
 	log.Debug("getting availability from api")
-	endpoint := fmt.Sprintf("https://recreation.gov/api/camps/availability/campground/%s/month", campgroundID)
+	endpoint := fmt.Sprintf("https://www.recreation.gov/api/camps/availability/campground/%s/month", campgroundID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		log.Error("couldn't create request", zap.Error(err))
 		return AvailabilityWithID{}, err
 	}
-
-	req.Header.Set("User-Agent", stealthing.RandomUserAgent())
 
 	// round the time to the start of the target month and put in param "start_date"
 	monthStart := GetStartOfMonth(targetTime)
@@ -75,7 +74,7 @@ func GetAvailability(ctx context.Context, olog *zap.Logger, client *http.Client,
 	v.Add("start_date", monthStart.Format("2006-01-02T15:04:05.000Z"))
 	req.URL.RawQuery = v.Encode()
 
-	res, err := client.Do(req)
+	res, err := client.Do(req, log)
 	if err != nil {
 		log.Error("couldn't do request", zap.Error(err))
 		return AvailabilityWithID{}, err
@@ -176,21 +175,43 @@ func DeduplicateAvailabilityRequests(requests []AvailabilityRequest) []Availabil
 }
 
 // CheckAvailability does a list of requests and returns a list of availabilities
-func DoRequests(ctx context.Context, olog *zap.Logger, client *http.Client, requests []AvailabilityRequest) ([]AvailabilityWithID, error) {
+func DoRequests(ctx context.Context, olog *zap.Logger, client *pc.Client, requests []AvailabilityRequest) ([]AvailabilityWithID, error) {
 	var availabilities []AvailabilityWithID
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
+	var firstError error
+	var seenError bool
+	defer cancel()
 
 	for _, request := range requests {
-		// Use the current time as the targetTime
-		availability, err := GetAvailability(ctx, olog, client, request.CampgroundID, request.TargetTime)
-		if err != nil {
-			olog.Error("Unable to get availability", zap.Error(err))
-			continue
-		}
-
-		availabilities = append(availabilities, availability)
+		wg.Add(1)
+		go func(request AvailabilityRequest) {
+			defer wg.Done()
+			// Use the current time as the targetTime
+			availability, err := GetAvailability(ctx, olog, client, request.CampgroundID, request.TargetTime)
+			if err != nil {
+				olog.Error("Unable to get availability", zap.Error(err))
+				mu.Lock()
+				// only want the first error seen returned.
+				// will get a slew of context cancelled errors after the first one
+				if !seenError {
+					firstError = err
+					seenError = true
+				}
+				mu.Unlock()
+				cancel()
+				return
+			}
+			mu.Lock()
+			availabilities = append(availabilities, availability)
+			mu.Unlock()
+		}(request)
 	}
 
-	return availabilities, nil
+	wg.Wait()
+
+	return availabilities, firstError
 }
 
 // GenerateNotifications takes a list of schniffs and a list of availabilities and generates notifications

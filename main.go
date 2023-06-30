@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	pc "github.com/brensch/proxy/client"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
@@ -15,11 +16,16 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	log := zap.NewExample()
 
+	p, err := pc.InitClient("proxy-362608")
+	if err != nil {
+		log.Fatal("couldn't start proxy", zap.Error(err))
+	}
+
 	botToken := os.Getenv("BOT_TOKEN")
 	GuildID := os.Getenv("GUILD_ID")
 
 	var s *discordgo.Session
-	s, err := discordgo.New("Bot " + botToken)
+	s, err = discordgo.New("Bot " + botToken)
 	if err != nil {
 		log.Fatal("Invalid bot parameters", zap.Error(err))
 	}
@@ -63,7 +69,7 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		for {
-			loop(ctx, log, s, sc, t)
+			loop(ctx, log, s, sc, t, p)
 			select {
 			case <-ticker.C:
 			case <-ctx.Done():
@@ -116,14 +122,14 @@ func main() {
 
 }
 
-func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker) {
+func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker, p *pc.Client) {
 	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc, t)
 
 	// Deduplicate requests
 	deduplicatedRequests := DeduplicateAvailabilityRequests(requests)
 	t.IncrementRequests(len(deduplicatedRequests))
 
-	availabilities, err := DoRequests(ctx, olog, s.Client, deduplicatedRequests)
+	availabilities, err := DoRequests(ctx, olog, p, deduplicatedRequests)
 	if err != nil {
 		olog.Error("Unable to get availability", zap.Error(err))
 		sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to get availability: %+v", err))
