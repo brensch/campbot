@@ -134,7 +134,7 @@ type AvailabilityRequest struct {
 
 // ConstructAvailabilityRequests takes a list of schniffs and returns a list of availability requests by
 // de-duplicating the campgroundIDs and extracting all the time periods from the schniffs
-func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client *http.Client, sc *SchniffCollection, t *tracker) []AvailabilityRequest {
+func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client *http.Client, sc *SchniffCollection, t *tracker, now time.Time) []AvailabilityRequest {
 	campgroundTimes := make(map[string][]time.Time)
 
 	sc.mutex.Lock()
@@ -159,6 +159,11 @@ func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client
 		// Generate all months between StartDate and EndDate
 		start, end := schniff.StartDate, schniff.EndDate
 		for d := start; d.Before(end) || d.Equal(end); d = d.AddDate(0, 1, 0) {
+			// skip if date is before now
+			if d.Before(currentDate) {
+				continue
+			}
+
 			monthStart := time.Date(d.Year(), d.Month(), 1, 0, 0, 0, 0, time.UTC) // Start of the month
 			campgroundTimes[schniff.CampgroundID] = append(campgroundTimes[schniff.CampgroundID], monthStart)
 		}

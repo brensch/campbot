@@ -124,7 +124,7 @@ func main() {
 }
 
 func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker, p *pc.Client) {
-	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc, t)
+	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc, t, time.Now())
 
 	// Deduplicate requests
 	deduplicatedRequests := DeduplicateAvailabilityRequests(requests)
