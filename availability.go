@@ -160,7 +160,7 @@ func ConstructAvailabilityRequests(ctx context.Context, olog *zap.Logger, client
 		start, end := schniff.StartDate, schniff.EndDate
 		for d := start; d.Before(end) || d.Equal(end); d = d.AddDate(0, 1, 0) {
 			// skip if date is before now
-			if d.Before(currentDate) {
+			if d.Before(now) {
 				continue
 			}
 
