@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 const (
@@ -156,4 +158,35 @@ func GenerateTableMessage(schniffs []*Schniff) string {
 	builder.WriteString("```")
 
 	return builder.String()
+}
+
+func GenerateEmbedMessage(schniffs []*Schniff) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Title:  "Campground Details",
+		Color:  0x00ff00, // Green color
+		Fields: []*discordgo.MessageEmbedField{},
+	}
+
+	for _, schniff := range schniffs {
+		campgroundURL := fmt.Sprintf("https://www.recreation.gov/camping/campgrounds/%s", schniff.CampgroundID)
+
+		fieldName := schniff.CampgroundName
+		fieldValue := fmt.Sprintf(
+			"[Link to Campground](%s)\nStartDate: %s\nEndDate: %s\nUserNick: %s\nCampsiteIDs: %s\nActive: %t",
+			campgroundURL,
+			schniff.StartDate.Format("2006-01-02"),
+			schniff.EndDate.Format("2006-01-02"),
+			schniff.UserNick,
+			strings.Join(schniff.CampsiteIDs, ","),
+			schniff.Active,
+		)
+
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:   fieldName,
+			Value:  fieldValue,
+			Inline: false,
+		})
+	}
+
+	return embed
 }

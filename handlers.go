@@ -243,6 +243,37 @@ func HandleRestartSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.In
 	}
 }
 
+func HandleStopSchniff(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
+	data := i.ApplicationCommandData()
+
+	schniffID := data.Options[0].StringValue()
+
+	err := sc.SetActive(schniffID, false)
+	if err != nil {
+		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: err.Error(),
+			},
+		})
+		if err != nil {
+			log.Error("Cannot respond to interaction", zap.Error(err))
+			return
+		}
+	}
+
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "Successfully stopped your schniff.",
+		},
+	})
+	if err != nil {
+		log.Error("Cannot respond to interaction", zap.Error(err))
+		return
+	}
+}
+
 func HandleRestartSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
 	data := i.ApplicationCommandData()
 	var choices []*discordgo.ApplicationCommandOptionChoice
@@ -265,6 +296,45 @@ func HandleRestartSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *
 		}
 		userInput := data.Options[0].StringValue()
 		choices = suggestBestMatchesForSchniff(stoppedChoices, userInput)
+	}
+
+	if len(choices) > 10 {
+		choices = choices[:10]
+	}
+
+	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+		Data: &discordgo.InteractionResponseData{
+			Choices: choices,
+		},
+	})
+	if err != nil {
+		log.Error("Cannot respond to interaction", zap.Error(err))
+	}
+}
+
+func HandleStopSchniffAutocomplete(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection) {
+	data := i.ApplicationCommandData()
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	var user *discordgo.User
+	if i.Member == nil {
+		user = i.User
+	} else {
+		user = i.Member.User
+	}
+	switch {
+	// In this case there are multiple autocomplete options. The Focused field shows which option user is focused on.
+	case data.Options[0].Focused:
+		allChoices := sc.GetSchniffsForUser(user.ID)
+		var runningChoices []*Schniff
+		for _, schniff := range allChoices {
+			if !schniff.Active {
+				continue
+			}
+			runningChoices = append(runningChoices, schniff)
+		}
+		userInput := data.Options[0].StringValue()
+		choices = suggestBestMatchesForSchniff(runningChoices, userInput)
 	}
 
 	if len(choices) > 10 {

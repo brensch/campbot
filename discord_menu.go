@@ -9,6 +9,7 @@ const (
 	CommandNewSchniff     = "new-schniff"
 	CommandViewSchniffs   = "view-schniffs"
 	CommandRestartSchniff = "restart-schniff"
+	CommandStopSchniff    = "stop-schniff"
 )
 
 var (
@@ -62,7 +63,21 @@ var (
 		},
 		{
 			Name:        CommandRestartSchniff,
-			Description: "Start a schniff running again if you missed it",
+			Description: "Start a schniff running again",
+			Type:        discordgo.ChatApplicationCommand,
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:         "schniff-id",
+					Description:  "Schniff",
+					Type:         discordgo.ApplicationCommandOptionString,
+					Required:     true,
+					Autocomplete: true,
+				},
+			},
+		},
+		{
+			Name:        CommandStopSchniff,
+			Description: "Stop a schniff",
 			Type:        discordgo.ChatApplicationCommand,
 			Options: []*discordgo.ApplicationCommandOption{
 				{
@@ -98,6 +113,14 @@ var (
 				HandleRestartSchniff(log, s, i, sc)
 			case discordgo.InteractionApplicationCommandAutocomplete:
 				HandleRestartSchniffAutocomplete(log, s, i, sc)
+			}
+		},
+		CommandStopSchniff: func(log *zap.Logger, s *discordgo.Session, i *discordgo.InteractionCreate, sc *SchniffCollection, cc *CampgroundCollection) {
+			switch i.Type {
+			case discordgo.InteractionApplicationCommand:
+				HandleStopSchniff(log, s, i, sc)
+			case discordgo.InteractionApplicationCommandAutocomplete:
+				HandleStopSchniffAutocomplete(log, s, i, sc)
 			}
 		},
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -61,5 +62,29 @@ func TestSchniffCollection(t *testing.T) {
 
 	if diff := cmp.Diff(expectedSchniff, sc.schniffs[0]); diff != "" {
 		t.Errorf("Schniff mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestGenerateTableMessage(t *testing.T) {
+	// Sample input
+	schniffs := []*Schniff{
+		{
+			CampgroundID:   "420",
+			CampgroundName: "Yellowstone",
+			StartDate:      time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC),
+			EndDate:        time.Date(2023, 5, 10, 0, 0, 0, 0, time.UTC),
+			UserNick:       "JohnDoe",
+			CampsiteIDs:    []string{"101", "102"},
+			Active:         true,
+		},
+	}
+
+	message := GenerateEmbedMessage(schniffs)
+
+	fmt.Println(message.Title)
+	fmt.Println(message.Description)
+	for _, field := range message.Fields {
+		fmt.Println(field.Name)
+		fmt.Println(field.Value)
 	}
 }
