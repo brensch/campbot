@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   app:
     build:
@@ -11,3 +11,4 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /app/credentials/service-account-key.json
     env_file:
       - .env
+    restart: always
