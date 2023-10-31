@@ -240,8 +240,9 @@ func DoRequests(ctx context.Context, olog *zap.Logger, client *pc.Client, reques
 }
 
 // GenerateNotifications takes a list of schniffs and a list of availabilities and generates notifications
-func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities []AvailabilityWithID, sc *SchniffCollection) ([]Notification, error) {
+func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities []AvailabilityWithID, sc *SchniffCollection, notificationRecords []NotificationRecord) ([]Notification, []NotificationRecord, error) {
 	var notifications []Notification
+	var newNotificationRecords []NotificationRecord
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 
@@ -273,6 +274,29 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 						continue
 					}
 
+					// check if we've already notified of this availability for this schniff
+					alreadyNotified := false
+					for _, record := range notificationRecords {
+						if record.SchniffID == schniff.SchniffID &&
+							record.CampgroundID == availability.CampgroundID &&
+							record.TargetDate.Equal(date) {
+							alreadyNotified = true
+							break
+						}
+					}
+					if alreadyNotified {
+						fmt.Println("already notified")
+						continue
+					}
+
+					newNotificationRecords = append(newNotificationRecords, NotificationRecord{
+						SchniffID:    schniff.SchniffID,
+						CampgroundID: availability.CampgroundID,
+						CampsiteID:   campsiteID,
+						TargetDate:   date,
+						NotifiedAt:   time.Now(),
+					})
+
 					notification.AvailableCampsites = append(notification.AvailableCampsites, CampsiteAvailability{
 						CampsiteID: campsiteID,
 						Date:       date,
@@ -288,5 +312,5 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 		notifications = append(notifications, notification)
 	}
 
-	return notifications, nil
+	return notifications, newNotificationRecords, nil
 }

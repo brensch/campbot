@@ -65,11 +65,13 @@ func main() {
 	}
 
 	t := NewTracker()
+	var notificationRecords []NotificationRecord
 
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		for {
-			loop(ctx, log, s, sc, t, p)
+			newNotificationRecords := loop(ctx, log, s, sc, t, p, notificationRecords)
+			notificationRecords = append(notificationRecords, newNotificationRecords...)
 			select {
 			case <-ticker.C:
 			case <-ctx.Done():
@@ -123,7 +125,15 @@ func main() {
 
 }
 
-func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker, p *pc.Client) {
+type NotificationRecord struct {
+	SchniffID    string
+	CampgroundID string
+	CampsiteID   string
+	TargetDate   time.Time
+	NotifiedAt   time.Time
+}
+
+func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *SchniffCollection, t *tracker, p *pc.Client, sentNotifications []NotificationRecord) []NotificationRecord {
 	requests := ConstructAvailabilityRequests(ctx, olog, s.Client, sc, t, time.Now())
 
 	// Deduplicate requests
@@ -134,16 +144,17 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 	if err != nil {
 		olog.Error("Unable to get availability", zap.Error(err))
 		sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to get availability: %+v", err))
-		return
+		return nil
 	}
 
-	notifications, err := GenerateNotifications(ctx, olog, availabilities, sc)
+	notifications, records, err := GenerateNotifications(ctx, olog, availabilities, sc, sentNotifications)
 	if err != nil {
 		sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to generate notifications: %+v", err))
 		olog.Error("Unable to generate notifications", zap.Error(err))
 	}
 
 	for _, notification := range notifications {
+
 		schniff, err := sc.GetSchniff(notification.SchniffID)
 		if err != nil {
 			olog.Error("no such schniff", zap.Error(err))
@@ -166,13 +177,13 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 			continue
 		}
 
-		// Mark the schniff as inactive
-		err = sc.SetActive(schniff.SchniffID, false)
-		if err != nil {
-			olog.Error("Unable to mark as inactive", zap.Error(err))
-			sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to mark schniff as inactive: %+v", err))
-			continue
-		}
+		// // Mark the schniff as inactive
+		// err = sc.SetActive(schniff.SchniffID, false)
+		// if err != nil {
+		// 	olog.Error("Unable to mark as inactive", zap.Error(err))
+		// 	sendMessageToChannelInAllGuilds(s, "problemos", fmt.Sprintf("Unable to mark schniff as inactive: %+v", err))
+		// 	continue
+		// }
 
 		sendMessageToChannelInAllGuilds(s, "announcements", RandomSillyBroadcast(schniff.UserID))
 
@@ -180,4 +191,6 @@ func loop(ctx context.Context, olog *zap.Logger, s *discordgo.Session, sc *Schni
 		t.AddNotification(notification)
 
 	}
+
+	return records
 }

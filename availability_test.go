@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"go.uber.org/zap"
@@ -15,7 +16,13 @@ func TestGenerateNotifications(t *testing.T) {
 	ctx := context.Background()
 	logger, _ := zap.NewDevelopment()
 
-	sc := NewSchniffCollection("schniffs.json")
+	// sc := NewSchniffCollection("example_schniffs.json")
+	sc := &SchniffCollection{
+		schniffs:     make([]*Schniff, 0),
+		mutex:        sync.Mutex{},
+		fileLocation: "example_schniffs.json",
+	}
+	sc.load()
 
 	// Read and unmarshal the availabilities.json file
 	availabilitiesFile, err := os.ReadFile("availability.json")
@@ -29,7 +36,7 @@ func TestGenerateNotifications(t *testing.T) {
 	}
 
 	// Run the GenerateNotifications function
-	notifications, err := GenerateNotifications(ctx, logger, availabilities, sc)
+	notifications, records, err := GenerateNotifications(ctx, logger, availabilities, sc, []NotificationRecord{})
 	if err != nil {
 		t.Fatalf("Error in GenerateNotifications function: %v", err)
 	}
@@ -50,6 +57,10 @@ func TestGenerateNotifications(t *testing.T) {
 			}
 			fmt.Println(campsite.CampsiteID, campsite.Date)
 		}
+	}
+
+	for _, record := range records {
+		fmt.Println(record.CampgroundID, record.CampsiteID, record.TargetDate)
 	}
 
 	// Add more assertions as needed...
