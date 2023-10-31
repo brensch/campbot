@@ -199,12 +199,12 @@ func HandleViewSchniffs(log *zap.Logger, s *discordgo.Session, i *discordgo.Inte
 		user = i.Member.User
 	}
 	schniffs := sc.GetSchniffsForUser(user.ID)
-	table := GenerateTableMessage(schniffs)
+	table := GenerateEmbedMessage(schniffs)
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: table,
+			Embeds: []*discordgo.MessageEmbed{table},
 		},
 	})
 	if err != nil {

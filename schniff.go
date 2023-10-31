@@ -143,23 +143,6 @@ func (sc *SchniffCollection) save() error {
 	return os.WriteFile(sc.fileLocation, data, 0644)
 }
 
-func GenerateTableMessage(schniffs []*Schniff) string {
-	var builder strings.Builder
-
-	// Table headers
-	builder.WriteString("```\n")
-	builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "CampgroundID", "CampgroundName", "StartDate", "EndDate", "UserNick", "CampsiteIDs", "active"))
-
-	// Table rows
-	for _, schniff := range schniffs {
-		builder.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s %-15s %-15s %-15t\n", schniff.CampgroundID, schniff.CampgroundName, schniff.StartDate.Format("2006-01-02"), schniff.EndDate.Format("2006-01-02"), schniff.UserNick, strings.Join(schniff.CampsiteIDs, ","), schniff.Active))
-	}
-
-	builder.WriteString("```")
-
-	return builder.String()
-}
-
 func GenerateEmbedMessage(schniffs []*Schniff) *discordgo.MessageEmbed {
 	embed := &discordgo.MessageEmbed{
 		Title:  "Campground Details",
