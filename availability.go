@@ -285,7 +285,6 @@ func GenerateNotifications(ctx context.Context, olog *zap.Logger, availabilities
 						}
 					}
 					if alreadyNotified {
-						fmt.Println("already notified")
 						continue
 					}
 

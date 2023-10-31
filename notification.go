@@ -138,9 +138,30 @@ func GenerateDiscordMessageEmbed(sc *SchniffCollection, notification Notificatio
 	// Add sorted campsites to the fields, with available days as percentage
 	for i, campsite := range campsites {
 		campsiteLink := baseURL + campsite.campsiteID
+		daysAvailableString := ""
+		daysCount := 0
+		sort.Slice(notification.AvailableCampsites, func(i, j int) bool {
+			return notification.AvailableCampsites[i].Date.Before(notification.AvailableCampsites[j].Date)
+		})
+		for _, availableCampsite := range notification.AvailableCampsites {
+			if campsite.campsiteID != availableCampsite.CampsiteID {
+				continue
+			}
+			dayOfWeek := availableCampsite.Date.Weekday().String()
+			dateString := availableCampsite.Date.Format("2006-01-02")
+			daysAvailableString += fmt.Sprintf("%s (%s)\n", dayOfWeek, dateString)
+			daysCount++
+			if daysCount == 10 {
+				break
+			}
+
+		}
+		if daysCount < campsite.daysCount {
+			daysAvailableString += fmt.Sprintf("...and %d more", campsite.daysCount-daysCount)
+		}
 		fields[i] = &discordgo.MessageEmbedField{
 			Name:   fmt.Sprintf("Campsite %s", campsite.campsiteID),
-			Value:  fmt.Sprintf("[%d of %d days available](%s)", campsite.daysCount, totalDays, campsiteLink),
+			Value:  fmt.Sprintf("[%d of %d days available](%s)\n%s", campsite.daysCount, totalDays, campsiteLink, daysAvailableString),
 			Inline: false,
 		}
 	}
@@ -158,8 +179,7 @@ Showing the top %d campsites by days available.
 		Value: `- You must act fast to get one of these sites. 
 - The links above take you directly to the campsite page to book. Find the availability and click it.
 - If there are no availabilities when you clicked the link, it is because you were too slow. I do not make mistakes.
-- The recreation.gov mobile app will sometimes open to the last page you were looking at despite clicking a link to a different page. Double check the link has opened correctly.
-- I have stopped monitoring the site since I schniffed you something. If you miss out on one of the availabilities above, please restart this schniff by typing '/restart-schniff/'`,
+- The recreation.gov mobile app will sometimes open to the last page you were looking at despite clicking a link to a different page. Double check the link has opened correctly.`,
 	}
 
 	// Create the embed message
